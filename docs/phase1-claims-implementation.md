@@ -98,11 +98,14 @@ ownerless/foreign record exclusion, pagination, bad-schema/service failure/empty
 states, persisted description edit and cancellation, CSRF, hidden-tab polling,
 existing authentication, accessibility and responsive layouts.
 
-Live authenticated GET success and DynamoDB ID equivalence have **not** been
-independently verified in this run. No AWS profile/CLI/table-read access or real
-account credentials were available. The user's prior successful Cognito login
-is not evidence of successful claims integration. Second-user authorization
-remains unverified. No real mutation, email, cloud deployment or push was performed.
+On 21 October 2026, the user confirmed live verification: **“IDs and fields match;
+unowned records absent. Refresh and pagination were checked where available.”**
+This establishes user-reported live Claims/DynamoDB agreement for the tested
+account, separate from the automated fixture tests. The agent did not independently
+observe the browser or read DynamoDB. Second-user authorization remains unverified.
+No real mutation, email, cloud deployment or push was performed by the agent.
+
+The next gate is [two-user isolation verification](phase1-isolation-verification.md).
 
 To complete live verification, sign in normally at localhost:3000 and open
 `/claims`. Inspect the same-origin `/api/claims` request status without copying
