@@ -145,8 +145,12 @@ function Island({
           </div>
         </nav>
         <div className="live" role="status">
-          <i className="dot p" aria-hidden="true" />
-          <span>2 services degraded</span>
+          <i
+            className="dot"
+            style={{ background: "var(--mut)" }}
+            aria-hidden="true"
+          />
+          <span>Health unavailable</span>
         </div>
       </div>
     </header>

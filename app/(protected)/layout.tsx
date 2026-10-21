@@ -1,5 +1,4 @@
 import { requireSession } from "@/lib/auth/session";
-import { ClaimProvider } from "@/components/claim-store";
 import { DynamicIsland } from "@/components/dynamic-island";
 import { MotionPreferences } from "@/components/motion";
 import { SessionGuard } from "@/components/session-guard";
@@ -13,10 +12,8 @@ export default async function ProtectedLayout({
   const session = await requireSession();
   return (
     <SessionGuard>
-      <ClaimProvider>
-        <DynamicIsland displayName={session.identity.displayName} />
-        {children}
-      </ClaimProvider>
+      <DynamicIsland displayName={session.identity.displayName} />
+      {children}
       <MotionPreferences />
     </SessionGuard>
   );

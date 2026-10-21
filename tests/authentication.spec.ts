@@ -71,9 +71,9 @@ test("verified sign-in survives refresh and login redirects without exposing tok
   await page.getByLabel("Password", { exact: true }).fill(testPassword);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page).toHaveURL("http://127.0.0.1:3100/");
-  await expect(page.locator("h1")).toContainText("4,218");
+  await expect(page.locator("h1")).toContainText("overview.");
   await page.reload();
-  await expect(page.locator("h1")).toContainText("4,218");
+  await expect(page.locator("h1")).toContainText("overview.");
   await page.goto("/login");
   await expect(page).toHaveURL("http://127.0.0.1:3100/");
   const cookies = await context.cookies();

@@ -77,10 +77,11 @@ Only owner-matching records are projected into the browser; historical unowned
 records are excluded. Description editing and cancellation use the supported
 PATCH/DELETE contracts. Creation is not enabled because it sends a real SES email.
 
-Command, Security, Reliability and Communications still contain demonstration
-content and have not been integrated. The old claim store remains for Command's
-illustrative analysis; the Claims workspace does not consume it. Fixture claim
-links on those untouched dashboards no longer open a demonstration investigation.
+Command, Security, Reliability and Communications show explicit unavailable states
+until their data sources are connected. No demo provider or fictional operational
+record is mounted on live routes. Historical fixture/reference files remain in the
+repository but are not a runtime fallback. Navbar monitoring shows Health unavailable.
+See [truthful live screens](docs/live-data-phase1.md) for the source inventory and next gates.
 
 See [Phase 1 implementation and verification](docs/phase1-claims-implementation.md).
 Live API success, DynamoDB ID comparison and second-user isolation must be
