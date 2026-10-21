@@ -9,11 +9,19 @@ const links = [
   ["/reliability", "Reliability"],
   ["/communications", "Communications"],
 ];
-export function DynamicIsland() {
+export function DynamicIsland({ displayName }: { displayName: string }) {
   const pathname = usePathname();
-  return <Island key={pathname} pathname={pathname} />;
+  return (
+    <Island key={pathname} pathname={pathname} displayName={displayName} />
+  );
 }
-function Island({ pathname }: { pathname: string }) {
+function Island({
+  pathname,
+  displayName,
+}: {
+  pathname: string;
+  displayName: string;
+}) {
   const [compact, setCompact] = useState(false);
   const [open, setOpen] = useState(false);
   const island = useRef<HTMLDivElement>(null);
@@ -131,11 +139,18 @@ function Island({ pathname }: { pathname: string }) {
                 {name}
               </Link>
             ))}
+            <a href="/logout" className="account-link" title={displayName}>
+              Account / Sign out
+            </a>
           </div>
         </nav>
         <div className="live" role="status">
-          <i className="dot p" aria-hidden="true" />
-          <span>2 services degraded</span>
+          <i
+            className="dot"
+            style={{ background: "var(--mut)" }}
+            aria-hidden="true"
+          />
+          <span>Health unavailable</span>
         </div>
       </div>
     </header>

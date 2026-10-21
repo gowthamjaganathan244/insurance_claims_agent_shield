@@ -1,9 +1,9 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./auth-fixture";
 import AxeBuilder from "@axe-core/playwright";
 const routes = [
   "/",
   "/claims",
-  "/claim/CLM-48213",
+  "/claim/11111111-1111-4111-8111-111111111111",
   "/security",
   "/reliability",
   "/communications",
@@ -31,55 +31,61 @@ test("all views render without errors or horizontal overflow", async ({
   }
   expect(errors).toEqual([]);
 });
-test("claims filters, evidence, decisions and audit remain consistent", async ({
+test("live claims support description updates and confirmed cancellation", async ({
   page,
 }) => {
   await page.goto("/claims");
-  await page.getByRole("button", { name: "Approved", exact: true }).click();
-  await expect(page.locator(".queue .row")).toHaveCount(1);
-  await expect(page.locator(".queue")).toContainText("Jamal Ortega");
-  await page.goto("/claim/CLM-48207");
-  await page.getByRole("button", { name: "Review evidence" }).click();
+  await expect(page.locator(".queue")).toContainText("POL-TEST");
+  await expect(page.locator(".queue")).not.toContainText("Marlow");
+  await page.goto("/claim/11111111-1111-4111-8111-111111111111");
+  await page
+    .getByLabel("Description", { exact: true })
+    .fill("Updated persisted description");
+  await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        response.url().includes("/api/claims/") &&
+        response.request().method() === "PATCH" &&
+        response.status() === 200,
+    ),
+    page.getByRole("button", { name: "Save description" }).click(),
+  ]);
   await expect(
-    page.getByRole("button", { name: /police_report/ }),
-  ).toHaveAttribute("aria-expanded", "true");
-  await page.getByRole("button", { name: "Approve action" }).click();
-  await page.getByRole("tab", { name: "Decision and payment" }).click();
-  await expect(page.getByRole("tabpanel")).toContainText(
-    "Scheduled within 2 business days",
+    page.getByRole("button", { name: "Save description" }),
+  ).toBeDisabled();
+  await page.reload();
+  await expect(page.getByLabel("Description", { exact: true })).toHaveValue(
+    "Updated persisted description",
   );
-  await page.getByRole("tab", { name: "Audit", exact: true }).click();
-  await expect(page.getByRole("tabpanel")).toContainText("Claim approved");
-  await page.getByRole("link", { name: "Back to claims" }).click();
-  await page.getByRole("button", { name: "Approved", exact: true }).click();
-  await expect(page.locator(".queue .row")).toHaveCount(2);
+  await page.getByRole("button", { name: "Cancel claim", exact: true }).click();
+  await page.getByRole("button", { name: "Confirm cancellation" }).click();
+  await expect(page.locator(".pane .tag")).toHaveText("CANCELLED");
+  await page.goto("/claims");
+  await page.getByRole("button", { name: "CANCELLED", exact: true }).click();
+  await expect(page.locator(".queue .row")).toHaveCount(1);
 });
-test("communications drafts and variables survive tab and template changes", async ({
+test("communications shows unavailable data with accessible tabs", async ({
   page,
 }) => {
   await page.goto("/communications");
-  await page
-    .getByLabel("Message text")
-    .fill(
-      "Hello {{firstName}}, claim {{claimId}} is ready. <script>safe text</script>",
-    );
-  await expect(page.locator(".msg")).toContainText(
-    "<script>safe text</script>",
+  await expect(page.getByRole("tabpanel")).toContainText(
+    "Template preview unavailable",
   );
+  await expect(page.getByRole("textbox")).toHaveCount(0);
   await page.getByRole("tab", { name: "Variables", exact: true }).click();
-  await expect(page.getByRole("tabpanel")).toContainText("claimId");
+  await expect(page.getByRole("tabpanel")).toContainText(
+    "variables unavailable",
+  );
   await page
     .getByRole("tab", { name: "Variables", exact: true })
     .press("ArrowRight");
   await expect(
     page.getByRole("tab", { name: "Version history" }),
   ).toBeFocused();
-  await page.getByRole("tab", { name: "Preview", exact: true }).click();
-  await expect(page.getByLabel("Message text")).toHaveValue(/safe text/);
-  await page.getByRole("button", { name: "DOCUMENT_HELD SMS" }).click();
-  await expect(page.getByLabel("Message text")).toHaveValue(/security team/);
-  await page.getByRole("button", { name: "CLAIM_RECEIVED SMS" }).click();
-  await expect(page.getByLabel("Message text")).toHaveValue(/safe text/);
+  await page.getByRole("tab", { name: "Delivery status" }).click();
+  await expect(page.getByRole("tabpanel")).toContainText(
+    "Delivery tracking not configured",
+  );
 });
 test("Dynamic Island supports mobile navigation, Escape and scroll collapse", async ({
   page,
@@ -106,20 +112,27 @@ test("Dynamic Island supports mobile navigation, Escape and scroll collapse", as
   await page.evaluate(() => window.scrollTo(0, 700));
   await expect(page.locator(".isl")).toHaveClass(/mini/);
 });
-test("security evidence and keyboard latency inspection work", async ({
+test("disconnected pages never present fictional evidence or healthy monitoring", async ({
   page,
 }) => {
+  for (const route of ["/", "/security", "/reliability", "/communications"]) {
+    await page.goto(route);
+    await expect(page.locator("main")).not.toContainText(
+      /4,218|INC-2291|INC-2288|CLM-48213|Marlow|99\.97%|1,420ms|Macro executed|Scheduled within|SMS/,
+    );
+    await expect(page.locator(".live")).toHaveText("Health unavailable");
+    await expect(page.locator("main")).toContainText(
+      /not connected|Not connected|unavailable/,
+    );
+  }
   await page.goto("/security");
-  await page.locator("summary").first().click();
-  await expect(page.locator("details").first()).toHaveAttribute("open", "");
-  await expect(page.locator("details").first()).toContainText(
-    "Macro executed on open",
-  );
+  await page.locator("summary").click();
+  await expect(page.locator("details")).not.toHaveAttribute("open", "");
+  await page.locator("summary").press("Enter");
+  await expect(page.locator("details")).toHaveAttribute("open", "");
   await page.goto("/reliability");
-  await page.getByRole("slider").focus();
-  await page.getByRole("slider").press("ArrowLeft");
-  await expect(page.locator(".tip")).toBeVisible();
-  await expect(page.getByRole("slider")).toHaveValue("46");
+  await expect(page.getByRole("slider")).toHaveCount(0);
+  await expect(page.locator(".chart svg")).toHaveCount(0);
 });
 test("accessibility and reduced motion", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });

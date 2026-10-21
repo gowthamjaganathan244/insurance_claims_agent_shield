@@ -1,7 +1,9 @@
+import { requireSession } from "@/lib/auth/session";
 import { PageHeading } from "@/components/ui";
 import { Communications } from "@/components/communications";
 export const metadata = { title: "Communications" };
-export default function CommunicationsPage() {
+export default async function CommunicationsPage() {
+  await requireSession();
   return (
     <main id="app" tabIndex={-1}>
       <PageHeading title="Communications">
