@@ -1,8 +1,10 @@
+import { requireSession } from "@/lib/auth/session";
 import Link from "next/link";
 import { incidents } from "@/lib/data";
 import { PageHeading } from "@/components/ui";
 export const metadata = { title: "Security" };
-export default function SecurityPage() {
+export default async function SecurityPage() {
+  await requireSession();
   return (
     <main id="app" tabIndex={-1}>
       <PageHeading title="Security">

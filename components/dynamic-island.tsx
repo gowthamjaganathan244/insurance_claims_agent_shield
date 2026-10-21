@@ -9,11 +9,19 @@ const links = [
   ["/reliability", "Reliability"],
   ["/communications", "Communications"],
 ];
-export function DynamicIsland() {
+export function DynamicIsland({ displayName }: { displayName: string }) {
   const pathname = usePathname();
-  return <Island key={pathname} pathname={pathname} />;
+  return (
+    <Island key={pathname} pathname={pathname} displayName={displayName} />
+  );
 }
-function Island({ pathname }: { pathname: string }) {
+function Island({
+  pathname,
+  displayName,
+}: {
+  pathname: string;
+  displayName: string;
+}) {
   const [compact, setCompact] = useState(false);
   const [open, setOpen] = useState(false);
   const island = useRef<HTMLDivElement>(null);
@@ -131,6 +139,9 @@ function Island({ pathname }: { pathname: string }) {
                 {name}
               </Link>
             ))}
+            <a href="/logout" className="account-link" title={displayName}>
+              Account / Sign out
+            </a>
           </div>
         </nav>
         <div className="live" role="status">

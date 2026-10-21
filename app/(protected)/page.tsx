@@ -1,3 +1,4 @@
+import { requireSession } from "@/lib/auth/session";
 import Link from "next/link";
 import { commandEvents } from "@/lib/data";
 import { Storyline } from "@/components/storyline";
@@ -11,7 +12,8 @@ const pipeline = [
   ["Payment", 512, "warn", "23 retrying"],
   ["Comms", 176, "ok", "Healthy"],
 ] as const;
-export default function CommandPage() {
+export default async function CommandPage() {
+  await requireSession();
   return (
     <main id="app" tabIndex={-1}>
       <section className="hero">

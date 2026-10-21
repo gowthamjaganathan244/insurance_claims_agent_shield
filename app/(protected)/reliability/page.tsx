@@ -1,10 +1,12 @@
+import { requireSession } from "@/lib/auth/session";
 import { PageHeading, Numbers } from "@/components/ui";
 import { LatencyChart } from "@/components/latency-chart";
 import { deployments, alerts } from "@/lib/data";
 import { seed } from "@/lib/claims";
 import type { Style } from "@/lib/types";
 export const metadata = { title: "Reliability" };
-export default function ReliabilityPage() {
+export default async function ReliabilityPage() {
+  await requireSession();
   return (
     <main id="app" tabIndex={-1}>
       <PageHeading title="Reliability">

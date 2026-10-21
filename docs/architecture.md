@@ -2,7 +2,13 @@
 
 ## Rendering and loading
 
-App Router route segments split each view. Command, claims, security, reliability and communications shells are prerendered; claim details validate route IDs on the server. A shared root provider owns claim state across navigation. Interaction boundaries are small client components; static incident content, page headings, SVG storyline markup, pipeline and service records render on the server.
+App Router route segments split each view. Task 11 moved operational pages into
+`app/(protected)` without changing their URLs. They are dynamically rendered and
+verify the server session individually and in their shared layout. Claim details
+validate fixture IDs after authentication; no claim IDs are statically generated.
+A provider inside the protected layout owns demonstration claim state across
+navigation. Public login/logout screens do not mount it or the Dynamic Island.
+See [authentication](authentication.md) for Cognito, sessions, caching and deployment.
 
 Do not replace the source with an iframe, injected HTML, or an imperative DOM router. React owns view state. All message edits render as escaped text, including literal HTML. Routes validate IDs and provide a not-found view and error boundary.
 
@@ -30,4 +36,10 @@ The stylesheet retains the source's cascade (base glass styling, final charcoal 
 
 ## Deployment boundary
 
-No secrets, credentials, vendor runtime or environment file belongs in Git. Production security headers deny framing and disable unused camera/microphone/geolocation capabilities. Add authentication, request validation, server authorization, durable audit events, rate limiting and retention requirements in the backend integration phase. A nonce-based CSP should be designed with the selected host's SSR strategy rather than disabling Next.js inline hydration scripts.
+No secrets, credentials, vendor runtime or environment file belongs in Git.
+Task 11 supplies Cognito authentication, auth-request validation and session rate
+limits. Production security headers deny framing and disable unused
+camera/microphone/geolocation capabilities. Claim ownership authorization,
+durable business audit events and deployment retention/perimeter controls remain
+backend integration work. A nonce-based CSP should be designed with the selected
+host's SSR strategy rather than disabling Next.js inline hydration scripts.
