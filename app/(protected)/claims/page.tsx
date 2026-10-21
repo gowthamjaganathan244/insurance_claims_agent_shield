@@ -7,7 +7,7 @@ export default async function ClaimsPage() {
   return (
     <main id="app" className="wide" tabIndex={-1}>
       <PageHeading title="Claims">
-        Sorted by what needs attention first.
+        Your claims, newest first.
       </PageHeading>
       <ClaimsWorkspace />
     </main>

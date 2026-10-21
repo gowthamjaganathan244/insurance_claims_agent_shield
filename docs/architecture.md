@@ -5,9 +5,10 @@
 App Router route segments split each view. Task 11 moved operational pages into
 `app/(protected)` without changing their URLs. They are dynamically rendered and
 verify the server session individually and in their shared layout. Claim details
-validate fixture IDs after authentication; no claim IDs are statically generated.
-A provider inside the protected layout owns demonstration claim state across
-navigation. Public login/logout screens do not mount it or the Dynamic Island.
+accept UUID paths after authentication and load through the authenticated claims
+BFF; no claim IDs are statically generated.
+A provider inside the protected layout still owns demonstration Command analysis
+state. Claims list/detail use a separate live API boundary with no fixture fallback. Public login/logout screens do not mount it or the Dynamic Island.
 See [authentication](authentication.md) for Cognito, sessions, caching and deployment.
 
 Do not replace the source with an iframe, injected HTML, or an imperative DOM router. React owns view state. All message edits render as escaped text, including literal HTML. Routes validate IDs and provide a not-found view and error boundary.

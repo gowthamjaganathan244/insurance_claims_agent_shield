@@ -71,17 +71,20 @@ TypeScript 6 is intentional: the installed Next.js lint stack does not yet suppo
 
 ## Data boundary
 
-This is a production-buildable **demonstration frontend** with real Cognito
-authentication. Claim data and operational metrics remain illustrative; no live
-claims backend, telemetry, malware scanner, payment provider or message delivery
-is connected. Claim actions persist across client-side navigation in the current
-page session and reset on reload. Template drafts persist across tabs and template
-selections while the communications view is mounted; they reset when leaving that
-view or reloading. No claim action sends a message or releases money.
+The Claims list and UUID claim detail routes now call the existing AWS claims API
+through session-verified Next.js handlers. They have no demonstration fallback.
+Only owner-matching records are projected into the browser; historical unowned
+records are excluded. Description editing and cancellation use the supported
+PATCH/DELETE contracts. Creation is not enabled because it sends a real SES email.
 
-Verify the seven API Gateway contracts, server-side ownerSub authorization and
-second-user isolation before connecting real data. The server-only API boundary
-is prepared but unused. Do not expose personal claim records in public client bundles.
+Command, Security, Reliability and Communications still contain demonstration
+content and have not been integrated. The old claim store remains for Command's
+illustrative analysis; the Claims workspace does not consume it. Fixture claim
+links on those untouched dashboards no longer open a demonstration investigation.
+
+See [Phase 1 implementation and verification](docs/phase1-claims-implementation.md).
+Live API success, DynamoDB ID comparison and second-user isolation must be
+recorded separately from automated contract-fixture tests.
 
 ## Deployment
 

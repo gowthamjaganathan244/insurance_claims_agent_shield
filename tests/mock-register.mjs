@@ -1,3 +1,4 @@
+import { mockClaims } from "./mock-claims.mjs";
 // Loaded only by tests/start-server.mjs through a child process --import.
 // The production application has no test authentication flag or bypass route.
 const original = globalThis.fetch;
@@ -14,5 +15,7 @@ globalThis.fetch = async (input, init) => {
       init,
     );
   }
+  if (url.hostname === "b30dloh6e4.execute-api.ap-southeast-2.amazonaws.com")
+    return mockClaims(url, init);
   return original(input, init);
 };

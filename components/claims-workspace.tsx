@@ -1,57 +1,90 @@
 "use client";
 import Link from "next/link";
 import { useState } from "react";
-import { useClaims } from "./claim-store";
-import { StatusTag } from "./ui";
-import { Journey } from "./journey";
-import { Analysis } from "./analysis";
-import { aud, claimEvents, riskColor } from "@/lib/claims";
-import { scanLabels } from "@/lib/data";
-import type { Claim } from "@/lib/types";
-export function ClaimFacts({ claim }: { claim: Claim }) {
-  return (
-    <dl className="kv">
-      <dt>Type</dt>
-      <dd>{claim.type}</dd>
-      <dt>Exposure</dt>
-      <dd>{aud(claim.amt)}</dd>
-      <dt>Location</dt>
-      <dd>{claim.loc}</dd>
-    </dl>
-  );
-}
+import type { ClaimsPageData } from "@/lib/live-claims";
+import { useLiveClaims } from "./use-live-claims";
+import { ClaimTime, LiveClaimPanel } from "./live-claim-panel";
 export function ClaimsWorkspace() {
-  const { claims } = useClaims();
+  const [cursor, setCursor] = useState<string | null>(null);
   const [filter, setFilter] = useState("All");
-  const [selected, setSelected] = useState("CLM-48213");
-  const visible = claims
-    .filter((claim) => filter === "All" || claim.status === filter)
-    .sort((a, b) => b.risk - a.risk);
-  const claim = visible.find((item) => item.id === selected) ?? visible[0];
+  const [selected, setSelected] = useState("");
+  const { data, error, loading, updated, refresh } =
+    useLiveClaims<ClaimsPageData>(
+      `/api/claims${cursor ? `?nextToken=${encodeURIComponent(cursor)}` : ""}`,
+    );
+  const visible = (data?.claims ?? []).filter(
+    (claim) => filter === "All" || claim.status === filter,
+  );
+  const claim = visible.find((item) => item.claimId === selected) ?? visible[0];
   return (
     <>
-      <div className="chips" role="group" aria-label="Filter claims">
-        {["All", "Processing", "In review", "Escalated", "Approved"].map(
-          (name) => (
-            <button
-              key={name}
-              aria-pressed={filter === name}
-              onClick={() => setFilter(name)}
-            >
-              {name}
-            </button>
-          ),
+      <div
+        className="chips"
+        role="group"
+        aria-label="Filter claims on this page"
+      >
+        {["All", "SUBMITTED", "CANCELLED"].map((name) => (
+          <button
+            key={name}
+            aria-pressed={filter === name}
+            onClick={() => setFilter(name)}
+          >
+            {name}
+          </button>
+        ))}
+      </div>
+      <div className="acts">
+        <button
+          className="btn"
+          disabled={loading}
+          onClick={() => void refresh()}
+        >
+          Refresh claims
+        </button>
+        {cursor && (
+          <button
+            className="btn"
+            disabled={loading}
+            onClick={() => setCursor(null)}
+          >
+            First page
+          </button>
+        )}
+        {data?.nextToken && (
+          <button
+            className="btn"
+            disabled={loading}
+            onClick={() => setCursor(data.nextToken)}
+          >
+            Next page
+          </button>
         )}
       </div>
-      <div className="ws">
+      <p className="dim sm" role="status">
+        {loading
+          ? "Loading claims…"
+          : data
+            ? `${visible.length} claims shown on this page`
+            : "Claims unavailable"}
+        {updated && (
+          <>
+            {" "}
+            · Last successful update: <ClaimTime value={updated} />
+          </>
+        )}
+      </p>
+      {error && <p role="alert">{error} Use Refresh claims to try again.</p>}
+      <div className="ws" aria-busy={loading}>
         <div className="queue">
           {visible.map((item) => (
             <Link
               prefetch={false}
-              key={item.id}
               className="row"
-              href={`/claim/${item.id}`}
-              aria-current={item.id === claim?.id ? "true" : undefined}
+              key={item.claimId}
+              href={`/claim/${encodeURIComponent(item.claimId)}`}
+              aria-current={
+                claim?.claimId === item.claimId ? "true" : undefined
+              }
               onClick={(event) => {
                 if (
                   matchMedia("(min-width:1180px)").matches &&
@@ -61,82 +94,56 @@ export function ClaimsWorkspace() {
                   !event.altKey
                 ) {
                   event.preventDefault();
-                  setSelected(item.id);
+                  setSelected(item.claimId);
                 }
               }}
             >
-              <div>
-                <div className="t">{item.name}</div>
+              <div style={{ minWidth: 0, overflowWrap: "anywhere" }}>
+                <div className="t">{item.policyNumber}</div>
                 <div className="s">
-                  {item.id}, {item.type}, {item.loc}
+                  {item.claimId} · {item.claimType}
                 </div>
               </div>
-              <div className="mid s">{aud(item.amt)}</div>
               <div className="row-status">
-                <span aria-label={`Risk ${item.risk} out of 100`}>
-                  <i className="rk" aria-hidden="true">
-                    <i
-                      style={{
-                        width: `${item.risk}%`,
-                        background: riskColor(item.risk),
-                      }}
-                    />
-                  </i>
-                  {item.risk}
-                </span>
-                <StatusTag status={item.status} />
+                <span className="tag acc">{item.status}</span>
               </div>
             </Link>
           ))}
-          {!visible.length && (
-            <p className="lede">No {filter.toLowerCase()} claims right now.</p>
+          {!loading && !error && !visible.length && (
+            <p className="lede">
+              {filter === "All"
+                ? "No claims are available for your account on this page."
+                : "No claims match this status on this page."}
+            </p>
           )}
         </div>
         {claim && (
           <>
-            <div className="pane" key={claim.id}>
-              <p className="dim sm" style={{ margin: 0 }}>
-                {claim.id}
-              </p>
-              <h2 style={{ margin: "4px 0 12px" }}>{claim.name}</h2>
-              <StatusTag status={claim.status} />
-              <div style={{ margin: "26px 0" }}>
-                <Journey claim={claim} />
-              </div>
-              <Analysis claim={claim} />
-              <ClaimFacts claim={claim} />
+            <div className="pane">
+              <LiveClaimPanel
+                key={`${claim.claimId}:${claim.description}:${claim.status}`}
+                claim={claim}
+                changed={() => void refresh()}
+              />
               <div className="acts">
                 <Link
                   prefetch={false}
-                  className="btn ok"
-                  href={`/claim/${claim.id}`}
+                  className="btn"
+                  href={`/claim/${encodeURIComponent(claim.claimId)}`}
                 >
-                  Open investigation
+                  Open claim
                 </Link>
               </div>
             </div>
             <div className="pane">
-              <h3 style={{ marginBottom: 18 }}>Security activity</h3>
-              {claim.docs.map((doc) => (
-                <div className="row document-summary" key={doc.n}>
-                  <div className="t sm">{doc.n}</div>
-                  <span className={`tag ${scanLabels[doc.s][1]}`}>
-                    {scanLabels[doc.s][0]}
-                  </span>
-                </div>
-              ))}
-              <ul className="tl" style={{ marginTop: 26 }}>
-                {claimEvents(claim)
-                  .slice(-4)
-                  .map((event, index) => (
-                    <li key={index} className={event[3]}>
-                      <b className="sm">{event[1]}</b>
-                      <small>
-                        {event[0]} AEST, {event[4]}
-                      </small>
-                    </li>
-                  ))}
-              </ul>
+              <h3>Claim information</h3>
+              <p className="dim">
+                Only information returned by the claims service is displayed.
+              </p>
+              <p className="dim">
+                Document scans, risk analysis, payment information and
+                investigation history are not available from this claims API.
+              </p>
             </div>
           </>
         )}
