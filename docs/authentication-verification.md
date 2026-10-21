@@ -16,7 +16,34 @@ interactions remain in place. No AWS resources were changed or deployed.
 | `npm run lint` | Passed |
 | `npm run typecheck` | Passed |
 | `npm run build` | Passed; protected pages are dynamic |
-| `npm run test:e2e` | 88 passed in 40.9 seconds |
+| `npm run test:e2e` | 88 passed in 36.8 seconds (Option A recheck) |
+
+## Option A follow-up
+
+The final decision is the existing branded form with server-side AWS SDK
+`USER_AUTH`, using the specified pool and client in `ap-southeast-2`. No login
+layout, stylesheet or dashboard source was changed in this follow-up. Added a
+regression assertion that the browser makes no external requests throughout
+sign-in, dashboard refresh and authenticated `/login` redirection. The Cognito
+domain remains only a sign-out cleanup destination, never a normal login page.
+
+Reproduced the original root cause against real Cognito with synthetic invalid
+credentials: omitting `PASSWORD` returned HTTP 400 `InvalidParameterException`
+with `Missing required parameter PASSWORD`; including it returned HTTP 400
+`NotAuthorizedException`. The corrected request was already present in commit
+`18d589f`. The generic UI availability error was the safe mapping of the former
+SDK exception, not evidence that a hosted login was needed.
+
+The existing localhost form was also tested against real Cognito with a synthetic
+invalid account. It stayed on `/login`, displayed the safe “Reset your password
+using Forgot password, then sign in again” response, and the session endpoint
+returned 401. This does not establish account existence or a successful login.
+No real account password was available to the agent for a new successful-login
+test; the user's prior successful login/logout report remains the live evidence.
+
+Lint, typecheck, production build and all 88 tests passed again. `npm ci` passed
+in the preceding implementation run; dependencies were unchanged and it was
+not rerun for this documentation/test-only follow-up. All work remains local.
 
 The final tests exercised Chromium, Firefox, WebKit and mobile against a
 production Next build with an isolated Cognito protocol mock. They cover the

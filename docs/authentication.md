@@ -46,6 +46,21 @@ client secret or identity database are needed for these public Cognito APIs.
 
 ## Flow selection and ZIP review
 
+**Final decision: Option A.** Preserve the custom AgentShield login design and
+authenticate its email/username and password form through the server-side AWS
+SDK. Normal sign-in never redirects to Cognito's hosted login. The Cognito
+domain is used only during sign-out to clear any previous managed-login session.
+
+The earlier “Authentication is temporarily unavailable” error was caused by
+omitting `PASSWORD` from `InitiateAuth` while requesting `USER_AUTH` with
+`PREFERRED_CHALLENGE: PASSWORD`. This pool returned `InvalidParameterException`
+with `Missing required parameter PASSWORD`; the safe error mapper displayed
+the generic availability message. The corrected initial request includes the
+password over TLS. This was a request-shape defect, not a need to replace the
+custom form, change the user pool, or enable a different authentication flow.
+The isolated test provider rejects the same missing parameter to guard against
+regression, and browser tests assert that sign-in makes no external requests.
+
 The supplied `agentshield-task11-step8-auth.zip` was read in full, including its
 installer, but was not executed. Its OAuth authorization code / PKCE exchange
 is useful reference material. It stores an access token in an HttpOnly cookie,

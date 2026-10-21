@@ -60,6 +60,12 @@ test("verified sign-in survives refresh and login redirects without exposing tok
   page,
   context,
 }) => {
+  const externalRequests: string[] = [];
+  page.on("request", (request) => {
+    const url = new URL(request.url());
+    if (url.origin !== "http://127.0.0.1:3100")
+      externalRequests.push(url.origin);
+  });
   await page.goto("/login?returnTo=https://attacker.example");
   await page.getByLabel("Email or username").fill(testUser());
   await page.getByLabel("Password", { exact: true }).fill(testPassword);
@@ -84,6 +90,9 @@ test("verified sign-in survives refresh and login redirects without exposing tok
   const response = await page.request.get("/api/auth/session");
   expect(response.headers()["cache-control"]).toContain("no-store");
   expect(await response.text()).not.toMatch(/accessToken|idToken|refreshToken/);
+  // Option A: credentials go to the local BFF; the browser never visits or
+  // sends tokens/credentials directly to Cognito's hosted login or APIs.
+  expect(externalRequests).toEqual([]);
 });
 
 test("tampered opaque sessions and invalid signed token claims are rejected", async ({
