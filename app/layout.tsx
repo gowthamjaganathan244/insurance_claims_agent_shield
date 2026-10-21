@@ -1,7 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import { DynamicIsland } from "@/components/dynamic-island";
-import { ClaimProvider } from "@/components/claim-store";
-import { MotionPreferences } from "@/components/motion";
 import "./globals.css";
 export const metadata: Metadata = {
   title: {
@@ -33,11 +30,7 @@ export default function RootLayout({
         <a className="skip" href="#app">
           Skip to content
         </a>
-        <ClaimProvider>
-          <DynamicIsland />
-          {children}
-        </ClaimProvider>
-        <MotionPreferences />
+        {children}
       </body>
     </html>
   );
