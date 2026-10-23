@@ -1,0 +1,21 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": "cloudwatch:DescribeAlarms",
+      "Resource": [
+        "arn:aws:cloudwatch:ap-southeast-2:465078122271:alarm:AgentShield-API-Errors",
+        "arn:aws:cloudwatch:ap-southeast-2:465078122271:alarm:AgentShield-Lambda-Errors",
+        "arn:aws:cloudwatch:ap-southeast-2:465078122271:alarm:AgentShield-Lambda-Latency"
+      ],
+      "Condition": {"StringEquals": {"aws:RequestedRegion": "ap-southeast-2"}}
+    },
+    {
+      "Effect": "Allow",
+      "Action": "cloudwatch:GetMetricData",
+      "Resource": "*",
+      "Condition": {"StringEquals": {"aws:RequestedRegion": "ap-southeast-2"}}
+    }
+  ]
+}

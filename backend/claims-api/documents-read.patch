@@ -1,0 +1,240 @@
+--- a/lambda_function.py
++++ b/lambda_function.py
+@@ -3,6 +3,9 @@
+ import os
+ import uuid
+ import base64
++import binascii
++import re
++from decimal import Decimal
+ from datetime import datetime, timezone
+ 
+ import boto3
+@@ -50,6 +53,149 @@
+     return value.strip()
+ 
+ 
++DOCUMENT_INDEX = "claimId-createdAt-index"
++DOCUMENT_PAGE_SIZE = 25
++# Upload intent reserves 16 KiB below the 10 MiB signed POST bound.
++DOCUMENT_SIZE_LIMIT = 10 * 1024 * 1024 - 16384
++DOCUMENT_TEXT_FIELDS = (
++    "documentId", "claimId", "fileName", "contentType", "status", "scanStatus",
++    "createdAt", "verifiedAt", "scanCompletedAt", "quarantineCopiedAt",
++    "sourceIsolatedAt",
++)
++DOCUMENT_BOOLEAN_FIELDS = ("quarantineCopyVerified", "sourceIsolationPending")
++DOCUMENT_SIZE_FIELDS = ("expectedSizeBytes", "actualSizeBytes")
++
++
++def document_response(status, data):
++    result = response(status, data)
++    result["headers"]["Cache-Control"] = "private, no-store"
++    return result
++
++
++def valid_document_key(key, claim_id):
++    valid = (
++        isinstance(key, dict)
++        and set(key) == {"documentId", "claimId", "createdAt"}
++        and key["claimId"] == claim_id
++        and isinstance(key["documentId"], str)
++        and re.fullmatch(r"[0-9a-f]{32}", key["documentId"]) is not None
++        and isinstance(key["createdAt"], str)
++        and 1 <= len(key["createdAt"]) <= 64
++    )
++    if not valid:
++        return False
++    try:
++        return datetime.fromisoformat(key["createdAt"].replace("Z", "+00:00")).tzinfo is not None
++    except ValueError:
++        return False
++
++
++def decode_document_cursor(token, owner, claim_id):
++    # This is a position cursor, not an authorization credential. Every request
++    # independently checks the claim and every returned item's ownership.
++    if (not isinstance(token, str) or not 1 <= len(token) <= 4096
++            or re.fullmatch(r"[A-Za-z0-9_-]+={0,2}", token) is None):
++        raise ValueError("Invalid nextToken")
++    try:
++        cursor = json.loads(base64.b64decode(
++            token.encode("ascii"), altchars=b"-_", validate=True
++        ).decode("utf-8"))
++        if (not isinstance(cursor, dict)
++                or set(cursor) != {"version", "ownerSub", "key"}
++                or type(cursor["version"]) is not int or cursor["version"] != 1
++                or cursor["ownerSub"] != owner
++                or not valid_document_key(cursor["key"], claim_id)):
++            raise ValueError()
++        return cursor["key"]
++    except (ValueError, TypeError, UnicodeError, binascii.Error):
++        raise ValueError("Invalid nextToken") from None
++
++
++def project_document(item):
++    # Apply the same key contract to records and continuation keys.
++    if not valid_document_key({
++        field: item.get(field) for field in ("documentId", "claimId", "createdAt")
++    }, item.get("claimId")):
++        raise RuntimeError("Invalid document metadata")
++    projected = {}
++    for field in DOCUMENT_TEXT_FIELDS:
++        if field in item:
++            if not isinstance(item[field], str) or len(item[field]) > 1024:
++                raise RuntimeError("Invalid document metadata")
++            projected[field] = item[field]
++    for field in ("documentId", "claimId", "createdAt", "status", "scanStatus"):
++        if not projected.get(field):
++            raise RuntimeError("Incomplete document metadata")
++    for field in DOCUMENT_BOOLEAN_FIELDS:
++        if field in item:
++            if type(item[field]) is not bool:
++                raise RuntimeError("Invalid document metadata")
++            projected[field] = item[field]
++    for field in DOCUMENT_SIZE_FIELDS:
++        if field in item:
++            value = item[field]
++            if isinstance(value, Decimal) and not value.is_finite():
++                raise RuntimeError("Invalid document metadata")
++            if isinstance(value, bool) or not isinstance(value, (int, Decimal)):
++                raise RuntimeError("Invalid document metadata")
++            if value < 1 or value >= DOCUMENT_SIZE_LIMIT or value != int(value):
++                raise RuntimeError("Invalid document metadata")
++            projected[field] = int(value)
++    return projected
++
++
++def list_documents(event, owner, claim_id):
++    try:
++        # Claim ownership is authoritative, before any document-index read.
++        claim = table.get_item(
++            Key={"claimId": claim_id}, ConsistentRead=True
++        ).get("Item")
++        if not claim or claim.get("ownerSub") != owner:
++            return document_response(404, {"error": "Claim not found"})
++        params = event.get("queryStringParameters") or {}
++        args = {
++            "IndexName": DOCUMENT_INDEX,
++            "KeyConditionExpression": Key("claimId").eq(claim_id),
++            "ScanIndexForward": False,
++            "Limit": DOCUMENT_PAGE_SIZE,
++        }
++        if "nextToken" in params:
++            try:
++                args["ExclusiveStartKey"] = decode_document_cursor(
++                    params["nextToken"], owner, claim_id
++                )
++            except ValueError:
++                return document_response(400, {"error": "Invalid nextToken"})
++        documents_table = boto3.resource("dynamodb").Table("agentshield-documents")
++        result = documents_table.query(**args)
++        documents = [
++            project_document(item) for item in result.get("Items", [])
++            if item.get("ownerSub") == owner and item.get("claimId") == claim_id
++        ]
++        key = result.get("LastEvaluatedKey")
++        token = None
++        if key:
++            if not valid_document_key(key, claim_id):
++                raise RuntimeError("Invalid document cursor")
++            token = base64.urlsafe_b64encode(json.dumps({
++                "version": 1, "ownerSub": owner, "key": key
++            }, separators=(",", ":")).encode("utf-8")).decode("ascii")
++        return document_response(200, {"documents": documents, "nextToken": token})
++    except Exception as error:
++        # Fixed diagnostic categories only: never log exception text, records,
++        # request headers, cursors, subjects, storage locations or AWS messages.
++        category = "internal_error"
++        if isinstance(error, ClientError):
++            code = getattr(error, "response", {}).get("Error", {}).get("Code")
++            category = code if isinstance(code, str) and code in {
++                "AccessDeniedException", "ResourceNotFoundException",
++                "ProvisionedThroughputExceededException", "ThrottlingException",
++                "RequestLimitExceeded", "InternalServerError", "ValidationException",
++            } else "aws_error"
++        print(json.dumps({"event": "document_read_failed", "category": category}))
++        return document_response(500, {"error": "Document service unavailable"})
++
++
+ def lambda_handler(event, context):
+     try:
+         # Authentication: trusted API Gateway JWT authorizer
+@@ -63,7 +209,8 @@
+         if (
+             not isinstance(claims, dict)
+             or claims.get("token_use") != "access"
+-            or not claims.get("sub")
++            or not isinstance(claims.get("sub"), str)
++            or not claims["sub"].strip()
+         ):
+             return response(401, {"error": "Unauthorized"})
+ 
+@@ -96,7 +243,12 @@
+             )
+ 
+ 
+-            # Send claim confirmation after successful save
++            # Send claim confirmation after successful save.
++            # Sender comes from Lambda configuration; unset means no email is attempted.
++            sender = os.environ.get("SES_FROM_ADDRESS", "").strip()
++            if not sender:
++                print("Claim email skipped: SES_FROM_ADDRESS not configured")
++                return response(201, claim)
+             try:
+                 cognito = boto3.client("cognito-idp")
+                 user = cognito.admin_get_user(
+@@ -111,7 +263,7 @@
+                 if attrs.get("email_verified") == "true" and attrs.get("email"):
+                     ses = boto3.client("sesv2")
+                     result = ses.send_email(
+-                        FromEmailAddress="<redacted-personal-sender>",
++                        FromEmailAddress=sender,
+                         Destination={
+                             "ToAddresses": [attrs["email"]]
+                         },
+@@ -172,11 +324,16 @@
+                 "claims": result.get("Items", []),
+                 "nextToken": next_token
+             })
++
++        # Owner-authorized metadata only; must precede the claim-detail route.
++        if (method == "GET" and claim_id
++                and path == f"/claims/{claim_id}/documents"):
++            return list_documents(event, owner, claim_id)
+ 
+         # ----------------------------------------
+         # GET /claims/{claimId}
+         # ----------------------------------------
+-        if method == "GET" and claim_id:
++        if method == "GET" and claim_id and path == f"/claims/{claim_id}":
+             result = table.get_item(
+                 Key={"claimId": claim_id}
+             )
+@@ -193,7 +350,7 @@
+         # Owner can edit description only
+         # while status is SUBMITTED
+         # ----------------------------------------
+-        if method == "PATCH" and claim_id:
++        if method == "PATCH" and claim_id and path == f"/claims/{claim_id}":
+             body = parse_body(event)
+ 
+             if set(body.keys()) != {"description"}:
+@@ -231,7 +388,7 @@
+ 
+ 
+         # DELETE - Safe insurance claim cancellation
+-        if method == "DELETE" and claim_id:
++        if method == "DELETE" and claim_id and path == f"/claims/{claim_id}":
+             try:
+                 now = datetime.now(timezone.utc).isoformat()
+ 
+@@ -309,7 +466,7 @@
+                 isinstance(size, bool)
+                 or not isinstance(size, int)
+                 or size < 1
+-                or size >= max_bytes - 16384
++                or size >= DOCUMENT_SIZE_LIMIT
+             ):
+                 return response(400, {
+                     "error": "Invalid file size"

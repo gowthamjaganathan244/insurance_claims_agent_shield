@@ -62,7 +62,7 @@ export function LiveClaimPanel({
       <p className="dim sm" style={{ overflowWrap: "anywhere" }}>
         {claim.claimId}
       </p>
-      <h2>{claim.policyNumber}</h2>
+      <h2 className="sr-only">Claim details</h2>
       <span className={`tag ${claim.status === "SUBMITTED" ? "acc" : "warn"}`}>
         {claim.status}
       </span>

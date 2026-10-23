@@ -24,3 +24,6 @@ work/
 
 .openai/
 .auth/
+
+__pycache__/
+*.pyc
