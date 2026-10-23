@@ -80,6 +80,111 @@ def sns_delivery(event):
     return {'processed': True}
 
 
+TEMPLATE_NAME = 'AgentShieldClaimCreated'
+TEMPLATE_PK = 'TEMPLATE#' + TEMPLATE_NAME
+TEMPLATE_LIMITS = {'subject': 200, 'text': 20000, 'html': 40000}
+
+
+def template_content(body):
+    content = {}
+    for field, limit in TEMPLATE_LIMITS.items():
+        value = body.get(field)
+        if not isinstance(value, str) or len(value) > limit or (field == 'subject' and not value.strip()):
+            raise ValueError('Invalid template ' + field)
+        content[field] = value
+    if not (content['text'].strip() or content['html'].strip()):
+        raise ValueError('Template needs text or HTML content')
+    return content
+
+
+def template_versions(event, actor, method):
+    """Database-backed template versions with recorded approval. Never publishes to SES."""
+    state = operations_table.get_item(Key={'PK': TEMPLATE_PK, 'SK': 'STATE'}, ConsistentRead=True).get('Item') \
+        or {'PK': TEMPLATE_PK, 'SK': 'STATE', 'version': 0, 'latest': 0, 'approved': None}
+    if method == 'GET':
+        versions = operations_table.query(KeyConditionExpression=Key('PK').eq(TEMPLATE_PK) & Key('SK').begins_with('VERSION#'),
+                                          ScanIndexForward=False, Limit=25, ConsistentRead=True).get('Items', [])
+        events = operations_table.query(KeyConditionExpression=Key('PK').eq(TEMPLATE_PK) & Key('SK').begins_with('EVENT#'),
+                                        ScanIndexForward=False, Limit=25, ConsistentRead=True).get('Items', [])
+        fields = ('number', 'status', 'source', 'subject', 'text', 'html', 'note', 'createdAt', 'reviewedAt', 'reviewNote', 'selfApproved')
+        return reply(200, {
+            'template': TEMPLATE_NAME, 'stateVersion': state['version'], 'latest': state['latest'], 'approved': state.get('approved'),
+            'publishedToSes': False,
+            'versions': [{**{k: v[k] for k in fields if k in v}, 'authoredByYou': v.get('authorSub') == actor,
+                          'reviewedByYou': v.get('reviewerSub') == actor if v.get('reviewerSub') else None} for v in versions],
+            'events': [{'eventId': e['eventId'], 'action': e['action'], 'createdAt': e['createdAt'], 'details': e.get('details', {}),
+                        'byYou': e.get('actorSub') == actor} for e in events]})
+    raw = event.get('body') or '{}'
+    if not isinstance(raw, str) or len(raw.encode()) > 65536:
+        return reply(400, {'error': 'Invalid request body'})
+    body = json.loads(raw)
+    if not isinstance(body, dict):
+        raise ValueError('Invalid body')
+    request_id = text(body, 'requestId', 36)
+    if str(uuid.UUID(request_id)) != request_id:
+        raise ValueError('Invalid requestId')
+    action = text(body, 'action', 20)
+    prior = operations_table.get_item(Key={'PK': TEMPLATE_PK, 'SK': 'REQUEST#' + request_id}, ConsistentRead=True).get('Item')
+    if prior:
+        if prior.get('actorSub') != actor or prior.get('action') != action:
+            return reply(409, {'error': 'Request conflict'})
+        return reply(200, {'recorded': True, 'eventId': prior['eventId'], 'replayed': True})
+    if type(body.get('stateVersion')) is not int or body['stateVersion'] != state['version']:
+        return reply(409, {'error': 'Template history changed. Refresh before submitting.'})
+    now = datetime.now(timezone.utc).isoformat()
+    note = text(body, 'note')
+    puts, details = [], {'note': note}
+    new_state = {**state, 'version': state['version'] + 1}
+    if action in ('import', 'draft'):
+        if action == 'import':
+            content = boto3.client('sesv2').get_email_template(TemplateName=TEMPLATE_NAME)['TemplateContent']
+            content = {'subject': content.get('Subject', ''), 'text': content.get('Text', ''), 'html': content.get('Html', '')}
+            source, status = 'SES_CURRENT', 'IMPORTED'
+        else:
+            content, source, status = template_content(body), 'OPERATOR_DRAFT', 'DRAFT'
+        number = state['latest'] + 1
+        new_state['latest'] = number
+        puts.append({'PK': TEMPLATE_PK, 'SK': 'VERSION#%05d' % number, 'number': number, 'status': status, 'source': source,
+                     'authorSub': actor, 'createdAt': now, 'note': note, **content})
+        details.update({'number': number, 'source': source})
+    elif action in ('approve', 'reject'):
+        number = body.get('number')
+        if type(number) is not int or number < 1:
+            raise ValueError('Invalid version number')
+        target = operations_table.get_item(Key={'PK': TEMPLATE_PK, 'SK': 'VERSION#%05d' % number}, ConsistentRead=True).get('Item')
+        if not target or target.get('status') != 'DRAFT':
+            return reply(409, {'error': 'Only draft versions can be reviewed'})
+        self_review = target.get('authorSub') == actor
+        if self_review and os.environ.get('REQUIRE_DISTINCT_APPROVER') == 'true':
+            return reply(403, {'error': 'A different operator must review this draft'})
+        reviewed = {**target, 'status': 'APPROVED' if action == 'approve' else 'REJECTED', 'reviewerSub': actor,
+                    'reviewedAt': now, 'reviewNote': note, 'selfApproved': self_review}
+        puts.append(reviewed)
+        if action == 'approve':
+            previous = state.get('approved')
+            if previous:
+                old = operations_table.get_item(Key={'PK': TEMPLATE_PK, 'SK': 'VERSION#%05d' % previous}, ConsistentRead=True).get('Item')
+                if old:
+                    puts.append({**old, 'status': 'SUPERSEDED', 'supersededAt': now})
+            new_state['approved'] = number
+        details.update({'number': number, 'selfApproved': self_review, 'publishedToSes': False})
+    else:
+        raise ValueError('Unsupported action')
+    event_id = request_id
+    state_put = {'TableName': operations_table.name, 'Item': wire(new_state),
+                 'ConditionExpression': '#v = :v' if state['version'] else 'attribute_not_exists(PK)'}
+    if state['version']:
+        state_put.update({'ExpressionAttributeNames': {'#v': 'version'}, 'ExpressionAttributeValues': wire({':v': state['version']})})
+    items = [{'Put': state_put}] + [{'Put': {'TableName': operations_table.name, 'Item': wire(item)}} for item in puts] + [
+        {'Put': {'TableName': operations_table.name, 'ConditionExpression': 'attribute_not_exists(PK)', 'Item': wire(
+            {'PK': TEMPLATE_PK, 'SK': 'EVENT#' + now + '#' + event_id, 'eventId': event_id, 'action': 'template_' + action,
+             'actorSub': actor, 'createdAt': now, 'details': details})}},
+        {'Put': {'TableName': operations_table.name, 'ConditionExpression': 'attribute_not_exists(PK)', 'Item': wire(
+            {'PK': TEMPLATE_PK, 'SK': 'REQUEST#' + request_id, 'actorSub': actor, 'action': action, 'eventId': event_id})}}]
+    client.transact_write_items(TransactItems=items)
+    return reply(201, {'recorded': True, 'eventId': event_id, 'number': details.get('number')})
+
+
 def lambda_handler(event, context):
     if 'Records' in event:
         return sns_delivery(event)
@@ -98,6 +203,10 @@ def lambda_handler(event, context):
             return reply(200, {'templates': [{'name': 'AgentShieldClaimCreated', 'subject': content.get('Subject',''),
                 'text': content.get('Text',''), 'html': content.get('Html','')}],
                 'deliveryTrackingConfigured': bool(os.environ.get('SES_CONFIGURATION_SET'))})
+        if path == '/templates/versions' and method in ('GET', 'POST'):
+            if not operator(owner):
+                return reply(403, {'error': 'Operator access required'})
+            return template_versions(event, owner, method)
         match = re.fullmatch(r'/claims/([A-Za-z0-9_-]{1,128})/operations', path)
         if not match:
             return reply(404, {'error': 'Route not found'})

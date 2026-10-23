@@ -7,6 +7,7 @@ import type { ClaimsPageData } from "@/lib/live-claims";
 import { Tabs } from "./tabs";
 import { reviewTemplate } from "@/lib/template-review";
 import { Pill } from "./ui";
+import { TemplateVersions } from "./template-versions";
 function Modernisation({
   template,
 }: {
@@ -169,6 +170,7 @@ function LiveCommunications() {
               "Preview",
               "Variables",
               "Content modernisation",
+              "Versions & approval",
               "Delivery status",
               "Audit trail",
             ]}
@@ -207,7 +209,8 @@ function LiveCommunications() {
               ) : (
                 <p>Content review unavailable until the template loads.</p>
               ))}
-            {tab === 3 && (
+            {tab === 3 && <TemplateVersions current={template} />}
+            {tab === 4 && (
               <>
                 <h3>
                   {templates.data
@@ -224,7 +227,7 @@ function LiveCommunications() {
                 </p>
               </>
             )}
-            {tab === 4 && (
+            {tab === 5 && (
               <p>
                 Read the selected claim’s persisted email events below. No
                 synthetic message statistics are calculated.

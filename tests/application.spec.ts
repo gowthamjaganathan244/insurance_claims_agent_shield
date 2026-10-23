@@ -21,6 +21,9 @@ test("all views render without errors or horizontal overflow", async ({
     for (const route of routes) {
       await page.goto(route);
       await expect(page.locator("h1")).toBeVisible();
+      // Let the page's own data requests settle: WebKit logs navigation-cancelled
+      // same-origin fetches as "access control checks" console errors.
+      await page.waitForLoadState("networkidle");
       expect(
         await page.evaluate(
           () => document.documentElement.scrollWidth <= innerWidth,

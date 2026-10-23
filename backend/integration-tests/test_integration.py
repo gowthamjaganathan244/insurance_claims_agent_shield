@@ -300,6 +300,68 @@ class AwsSimulation(unittest.TestCase):
         self.assertEqual(self.call(self.mon, ALICE, "GET", "/monitoring")[0], 403)
         self.assertEqual(self.call(self.mon, None, "GET", "/monitoring")[0], 401)
 
+    # ---------- template versioning (Task 9) ----------
+    def tv(self, sub, body=None):
+        if body is None:
+            return self.call(self.ops, sub, "GET", "/templates/versions")
+        return self.call(self.ops, sub, "POST", "/templates/versions", body)
+
+    def test_09_template_versions_import_draft_approve_supersede(self):
+        # moto lacks SESv2 templates: stand in for SES only; DynamoDB stays simulated.
+        from unittest.mock import MagicMock, patch
+        live_template = {"Subject": "AgentShield - Claim {{claimId}} Received",
+                         "Text": "Your insurance claim {{claimId}} has been received. Status: {{status}}.", "Html": ""}
+        ses = MagicMock()
+        ses.get_email_template.return_value = {"TemplateContent": dict(live_template)}
+        real_client = boto3.client
+        patcher = patch.object(self.ops.boto3, "client", lambda name, *a, **k: ses if name == "sesv2" else real_client(name, *a, **k))
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        req = lambda: str(uuid.uuid4())
+        self.assertEqual(self.tv(ALICE)[0], 403, "non-operators cannot read template history")
+        self.assertEqual(self.call(self.ops, None, "GET", "/templates/versions")[0], 401)
+        code, s = self.tv(OPERATOR)
+        self.assertEqual((code, s["stateVersion"], s["versions"], s["publishedToSes"]), (200, 0, [], False))
+        imp = {"action": "import", "note": "Baseline from SES", "stateVersion": 0, "requestId": req()}
+        code, body = self.tv(OPERATOR, imp)
+        self.assertEqual((code, body["number"]), (201, 1), body)
+        self.assertEqual(self.tv(OPERATOR, imp)[1]["eventId"], body["eventId"], "import retry is idempotent")
+        draft = {"action": "draft", "note": "Plain-language rewrite", "stateVersion": 1, "requestId": req(),
+                 "subject": "Claim {{claimId}} received", "text": "We received claim {{claimId}}. Status: {{status}}.",
+                 "html": "<p>We received claim {{claimId}}. Status: {{status}}.</p>"}
+        code, body = self.tv(OPERATOR, draft)
+        self.assertEqual((code, body["number"]), (201, 2), body)
+        self.assertEqual(self.tv(OPERATOR, {**draft, "requestId": req()})[0], 409, "stale history rejected")
+        bad = {**draft, "stateVersion": 2, "requestId": req(), "subject": ""}
+        self.assertEqual(self.tv(OPERATOR, bad)[0], 400)
+        self.assertEqual(self.tv(OPERATOR, {"action": "approve", "number": 1, "note": "n", "stateVersion": 2,
+                                            "requestId": req()})[0], 409, "imported baseline is not a reviewable draft")
+        code, body = self.tv(OPERATOR, {"action": "approve", "number": 2, "note": "Reviewed wording",
+                                        "stateVersion": 2, "requestId": req()})
+        self.assertEqual(code, 201, body)
+        code, s = self.tv(OPERATOR)
+        by = {v["number"]: v for v in s["versions"]}
+        self.assertEqual((by[1]["status"], by[1]["source"]), ("IMPORTED", "SES_CURRENT"))
+        self.assertEqual(by[1]["subject"], "AgentShield - Claim {{claimId}} Received")
+        self.assertEqual((by[2]["status"], by[2]["selfApproved"], s["approved"]), ("APPROVED", True, 2))
+        # A newer approved draft supersedes the previous approval.
+        self.tv(OPERATOR, {**draft, "stateVersion": 3, "requestId": req(), "subject": "Claim {{claimId}}: received"})
+        self.tv(OPERATOR, {"action": "approve", "number": 3, "note": "v3", "stateVersion": 4, "requestId": req()})
+        code, s = self.tv(OPERATOR)
+        by = {v["number"]: v for v in s["versions"]}
+        self.assertEqual((by[2]["status"], by[3]["status"], s["approved"]), ("SUPERSEDED", "APPROVED", 3))
+        self.assertEqual([e["action"] for e in s["events"]][:2], ["template_approve", "template_draft"])
+        self.assertFalse(any(e["details"].get("publishedToSes") for e in s["events"]), "never published to SES")
+        self.assertEqual([c[0] for c in ses.method_calls], ["get_email_template"], "only reads SES; never updates or sends")
+        # Separation of duties can be enforced by configuration.
+        self.tv(OPERATOR, {**draft, "stateVersion": 5, "requestId": req()})
+        os.environ["REQUIRE_DISTINCT_APPROVER"] = "true"
+        try:
+            self.assertEqual(self.tv(OPERATOR, {"action": "approve", "number": 4, "note": "n", "stateVersion": 6,
+                                                "requestId": req()})[0], 403)
+        finally:
+            os.environ.pop("REQUIRE_DISTINCT_APPROVER")
+
 
 if __name__ == "__main__":
     unittest.main()

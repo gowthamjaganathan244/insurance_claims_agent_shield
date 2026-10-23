@@ -138,3 +138,58 @@ test("connected workflow and communications forms remain accessible on mobile", 
     expect(result.violations.map((v) => v.id)).toEqual([]);
   }
 });
+
+test("template versions: import, draft, approve with audit; never published to SES", async ({
+  page,
+}) => {
+  await login(page.request, testUser("operator"));
+  await page.goto("/communications");
+  await page.getByRole("tab", { name: "Versions & approval" }).click();
+  const panel = page.getByRole("tabpanel");
+  await expect(panel).toContainText("No versions recorded yet");
+  await expect(
+    panel.locator(".kpi", { hasText: "Published to SES" }),
+  ).toContainText("No");
+  await panel
+    .getByRole("button", { name: "Import current SES template" })
+    .click();
+  await expect(panel.getByRole("cell", { name: /v1/ })).toBeVisible();
+  await expect(panel).toContainText("IMPORTED");
+  await panel.getByRole("button", { name: "Propose draft" }).click();
+  await panel.getByLabel("Subject").fill("Claim {{claimId}} received");
+  await expect(panel).toContainText("Content checks:");
+  await panel.getByLabel("Reason for change").fill("Clearer subject line");
+  await panel.getByRole("button", { name: "Record draft" }).click();
+  await expect(panel).toContainText("DRAFT");
+  await panel.getByRole("button", { name: "Approve v2" }).click();
+  await expect(
+    panel.locator(".kpi", { hasText: "Approved version" }),
+  ).toContainText("v2");
+  await expect(panel).toContainText("self-approved");
+  for (const text of [
+    "Imported current SES template",
+    "Draft proposed",
+    "Draft approved",
+  ])
+    await expect(panel.locator(".timeline")).toContainText(text);
+});
+test("template versions are operator-only and require CSRF", async ({
+  page,
+}) => {
+  await login(page.request);
+  expect(
+    (await page.request.get("/api/operations/templates/versions")).status(),
+  ).toBe(403);
+  await login(page.request, testUser("operator"));
+  const r = await page.request.post("/api/operations/templates/versions", {
+    data: { action: "import" },
+  });
+  expect(r.status()).toBe(403);
+  expect(
+    (
+      await mutate(page.request, "/api/operations/templates/versions", {
+        action: "delete-all",
+      })
+    ).status(),
+  ).toBe(400);
+});

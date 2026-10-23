@@ -32,14 +32,16 @@ resource('Authorizer','AWS::ApiGatewayV2::Authorizer',{'ApiId':ref('Api'),'Name'
 for name in ['Documents','Operations','Monitoring']:
     resource(name+'Integration','AWS::ApiGatewayV2::Integration',{'ApiId':ref('Api'),'IntegrationType':'AWS_PROXY','IntegrationMethod':'POST','IntegrationUri':attr(name+'Function','Arn'),'PayloadFormatVersion':'2.0','TimeoutInMillis':20000})
 routes=[]
-for name,verb,path,target in [('Documents','GET','/claims/{claimId}/documents','Documents'),('ReadOperations','GET','/claims/{claimId}/operations','Operations'),('WriteOperations','POST','/claims/{claimId}/operations','Operations'),('Templates','GET','/templates','Operations'),('Monitoring','GET','/monitoring','Monitoring')]:
+for name,verb,path,target in [('Documents','GET','/claims/{claimId}/documents','Documents'),('ReadOperations','GET','/claims/{claimId}/operations','Operations'),('WriteOperations','POST','/claims/{claimId}/operations','Operations'),('Templates','GET','/templates','Operations'),('Monitoring','GET','/monitoring','Monitoring'),('TemplateVersionsRead','GET','/templates/versions','Operations'),('TemplateVersionsWrite','POST','/templates/versions','Operations')]:
     route=name+'Route';routes.append(route)
     resource(route,'AWS::ApiGatewayV2::Route',{'ApiId':ref('Api'),'RouteKey':verb+' '+path,'AuthorizationType':'JWT','AuthorizerId':ref('Authorizer'),'Target':sub('integrations/${'+target+'Integration}')})
     resource(name+'Permission','AWS::Lambda::Permission',{'FunctionName':ref(target+'Function'),'Action':'lambda:InvokeFunction','Principal':'apigateway.amazonaws.com','SourceAccount':ref('AWS::AccountId'),'SourceArn':arn('execute-api','${Api}/$default/'+verb+path.replace('{claimId}','*'))})
-resource('DeploymentInitial','AWS::ApiGatewayV2::Deployment',{'ApiId':ref('Api')},DependsOn=[r for r in routes if r!='MonitoringRoute'])
+resource('DeploymentInitial','AWS::ApiGatewayV2::Deployment',{'ApiId':ref('Api')},DependsOn=[r for r in routes if r!='MonitoringRoute' and not r.startswith('TemplateVersions')])
 # New deployment so the AutoDeploy=false stage picks up the monitoring route; the initial one is kept for rollback.
-resource('DeploymentMonitoring','AWS::ApiGatewayV2::Deployment',{'ApiId':ref('Api'),'Description':'Adds GET /monitoring'},DependsOn=routes)
-resource('Stage','AWS::ApiGatewayV2::Stage',{'ApiId':ref('Api'),'StageName':'$default','AutoDeploy':False,'DeploymentId':ref('DeploymentMonitoring'),'DefaultRouteSettings':{'ThrottlingBurstLimit':3,'ThrottlingRateLimit':1}})
+resource('DeploymentMonitoring','AWS::ApiGatewayV2::Deployment',{'ApiId':ref('Api'),'Description':'Adds GET /monitoring'},DependsOn=[r for r in routes if not r.startswith('TemplateVersions')])
+# Template versioning routes; earlier deployments are kept for rollback.
+resource('DeploymentTemplateVersions','AWS::ApiGatewayV2::Deployment',{'ApiId':ref('Api'),'Description':'Adds GET/POST /templates/versions'},DependsOn=routes)
+resource('Stage','AWS::ApiGatewayV2::Stage',{'ApiId':ref('Api'),'StageName':'$default','AutoDeploy':False,'DeploymentId':ref('DeploymentTemplateVersions'),'DefaultRouteSettings':{'ThrottlingBurstLimit':3,'ThrottlingRateLimit':1}})
 resource('EmailConfiguration','AWS::SES::ConfigurationSet',{'Name':sub('${AWS::StackName}-email')},Condition='EmailEnabled')
 resource('EmailTopic','AWS::SNS::Topic',{},Condition='EmailEnabled')
 resource('EmailTopicPolicy','AWS::SNS::TopicPolicy',{'Topics':[ref('EmailTopic')],'PolicyDocument':{'Version':'2012-10-17','Statement':[{'Effect':'Allow','Principal':{'Service':'ses.amazonaws.com'},'Action':'sns:Publish','Resource':ref('EmailTopic'),'Condition':{'StringEquals':{'AWS:SourceAccount':ref('AWS::AccountId')},'ArnEquals':{'AWS:SourceArn':arn('ses','identity/${SenderIdentity}')}}}]}},Condition='EmailEnabled')
