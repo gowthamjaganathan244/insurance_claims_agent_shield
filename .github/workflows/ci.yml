@@ -26,6 +26,7 @@ jobs:
           npm run test:e2e
           AGENTSHIELD_TEST_OPERATIONS=true npx playwright test tests/operations.spec.ts tests/claim-workflows.spec.ts --project=chromium --project=mobile
           AGENTSHIELD_TEST_REMOTE_MONITORING=true npx playwright test tests/remote-monitoring.spec.ts --project=chromium --project=mobile
+          AGENTSHIELD_TEST_REDIS=true npx playwright test tests/authentication.spec.ts tests/api-contract.spec.ts --project=chromium
       - if: failure()
         uses: actions/upload-artifact@v4
         with:

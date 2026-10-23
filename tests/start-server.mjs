@@ -5,9 +5,22 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { startMockCognito } from "./mock-cognito.mjs";
+import { startMockRedis } from "./mock-redis.mjs";
 const directory = mkdtempSync(join(tmpdir(), "agentshield-auth-test-"));
 const databasePath = join(directory, "sessions.sqlite");
+// AGENTSHIELD_TEST_REDIS=true runs the same suites against the Redis session store.
+const redisToken = randomBytes(16).toString("hex");
+const redis =
+  process.env.AGENTSHIELD_TEST_REDIS === "true"
+    ? startMockRedis(3198, redisToken)
+    : null;
 const mock = await startMockCognito(({ id, action }) => {
+  if (redis) {
+    const key = `agentshield:rec:${createHash("sha256").update(id).digest("hex")}`;
+    if (action === "expire") redis.expire(key);
+    if (action === "tamper") redis.tamper(key);
+    return { ok: true };
+  }
   const db = new DatabaseSync(databasePath);
   db.exec("PRAGMA busy_timeout=5000");
   const hash = createHash("sha256").update(id).digest("hex");
@@ -57,7 +70,10 @@ const app = spawn(
         .join(","),
       APP_ORIGIN: "http://127.0.0.1:3100",
       AUTH_SESSION_KEY: randomBytes(32).toString("hex"),
-      AUTH_DATABASE_PATH: databasePath,
+      // In Redis mode an unwritable path proves SQLite is never opened.
+      AUTH_DATABASE_PATH: redis ? "/dev/null/no-sqlite" : databasePath,
+      UPSTASH_REDIS_REST_URL: redis ? "http://127.0.0.1:3198" : "",
+      UPSTASH_REDIS_REST_TOKEN: redis ? redisToken : "",
     },
   },
 );
@@ -67,6 +83,7 @@ function stop() {
   stopping = true;
   app.kill("SIGTERM");
   mock.close();
+  redis?.close();
 }
 process.on("SIGTERM", stop);
 process.on("SIGINT", stop);
