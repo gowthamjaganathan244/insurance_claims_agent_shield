@@ -1,13 +1,14 @@
 "use client";
 import Link from "next/link";
+import { HealthDot, MonitoringHealth } from "./monitoring-provider";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 const links = [
-  ["/", "Command"],
+  ["/", "Overview"],
   ["/claims", "Claims"],
   ["/security", "Security"],
-  ["/reliability", "Reliability"],
   ["/communications", "Communications"],
+  ["/reliability", "Reliability"],
 ];
 export function DynamicIsland({ displayName }: { displayName: string }) {
   const pathname = usePathname();
@@ -27,7 +28,7 @@ function Island({
   const island = useRef<HTMLDivElement>(null);
   const toggle = useRef<HTMLButtonElement>(null);
   const active = pathname.startsWith("/claim/") ? "/claims" : pathname;
-  const label = links.find(([href]) => href === active)?.[1] ?? "Command";
+  const label = links.find(([href]) => href === active)?.[1] ?? "Overview";
   useEffect(() => {
     const media = matchMedia("(max-width:640px)");
     let previous = window.scrollY;
@@ -89,7 +90,7 @@ function Island({
           prefetch={false}
           className="brand"
           href="/"
-          aria-label="AgentShield AU command"
+          aria-label="AgentShield AU overview"
         >
           <svg
             viewBox="0 0 24 24"
@@ -140,17 +141,13 @@ function Island({
               </Link>
             ))}
             <a href="/logout" className="account-link" title={displayName}>
-              Account / Sign out
+              Sign out
             </a>
           </div>
         </nav>
         <div className="live" role="status">
-          <i
-            className="dot"
-            style={{ background: "var(--mut)" }}
-            aria-hidden="true"
-          />
-          <span>Health unavailable</span>
+          <HealthDot />
+          <MonitoringHealth />
         </div>
       </div>
     </header>

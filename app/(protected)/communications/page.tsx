@@ -9,7 +9,7 @@ export default async function CommunicationsPage() {
       <PageHeading title="Communications">
         What customers read, and whether it arrived.
       </PageHeading>
-      <Communications />
+      <Communications connected={Boolean(process.env.OPERATIONS_API_ORIGIN)} />
     </main>
   );
 }

@@ -39,6 +39,22 @@ const app = spawn(
     stdio: "inherit",
     env: {
       ...process.env,
+      OPERATIONS_API_ORIGIN:
+        process.env.AGENTSHIELD_TEST_OPERATIONS === "true"
+          ? "https://testoperations.execute-api.ap-southeast-2.amazonaws.com"
+          : "",
+      DOCUMENTS_READ_API_ORIGIN: "",
+      MONITORING_API_ORIGIN:
+        process.env.AGENTSHIELD_TEST_REMOTE_MONITORING === "true"
+          ? "https://testmonitoring.execute-api.ap-southeast-2.amazonaws.com"
+          : "",
+      AWS_ACCESS_KEY_ID: "CI_ONLY_ACCESS_KEY",
+      AWS_SECRET_ACCESS_KEY: "CI_ONLY_SECRET",
+      AWS_SESSION_TOKEN: "CI_ONLY_TEMPORARY_TOKEN",
+      AWS_EC2_METADATA_DISABLED: "true",
+      MONITORING_ALLOWED_SUBS: ["chromium", "firefox", "webkit", "mobile"]
+        .map((name) => `subject-monitoring-${name}@example.test`)
+        .join(","),
       APP_ORIGIN: "http://127.0.0.1:3100",
       AUTH_SESSION_KEY: randomBytes(32).toString("hex"),
       AUTH_DATABASE_PATH: databasePath,
