@@ -6,7 +6,7 @@ import { ClaimOperations } from "./claim-operations";
 import type { ClaimsPageData } from "@/lib/live-claims";
 import { Tabs } from "./tabs";
 import { reviewTemplate } from "@/lib/template-review";
-import { Pill } from "./ui";
+import { Alert, Pill } from "./ui";
 import { TemplateVersions } from "./template-versions";
 function Modernisation({
   template,
@@ -57,11 +57,11 @@ export function Communications({ connected = false }: { connected?: boolean }) {
 function UnavailableCommunications() {
   const [tab, setTab] = useState(0);
   return (
-    <div className="tpl">
-      <div className="pane">
-        <h2>Email templates</h2>
-        <p className="dim">Not connected</p>
-        <p className="dim">No template content has been loaded.</p>
+    <div className="comm-card">
+      <div className="comm-bar">
+        <p className="dim sm" role="status">
+          Email templates: not connected. No template content has been loaded.
+        </p>
       </div>
       <div className="glass lq">
         <Tabs
@@ -144,25 +144,34 @@ function LiveCommunications() {
     : [];
   return (
     <>
-      <div className="tpl">
-        <div className="pane">
-          <h2>Email templates</h2>
-          <button
-            className="btn"
-            disabled={templates.loading}
-            onClick={() => void templates.refresh()}
-          >
-            Refresh templates
-          </button>
-          {templates.loading && <p role="status">Loading SES template…</p>}
-          {templates.error && <p role="alert">{templates.error}</p>}
-          {templates.updated && (
-            <p>
-              Last read: <ClaimTime value={templates.updated} />
-            </p>
+      <div className="comm-bar">
+        <p className="dim sm" role="status">
+          {template ? (
+            <>
+              <b className="comm-name">{template.name}</b> · stored SES template
+            </>
+          ) : templates.loading ? (
+            "Loading SES template…"
+          ) : (
+            "Template unavailable"
           )}
-          {template ? <p>{template.name}</p> : <p>Template unavailable</p>}
-        </div>
+          {templates.updated && (
+            <>
+              {" "}
+              · Last read <ClaimTime value={templates.updated} />
+            </>
+          )}
+        </p>
+        <button
+          className="btn"
+          disabled={templates.loading}
+          onClick={() => void templates.refresh()}
+        >
+          Refresh templates
+        </button>
+      </div>
+      {templates.error && <Alert tone="bad">{templates.error}</Alert>}
+      <div className="comm-card">
         <div className="glass lq">
           <Tabs
             label="Email data availability"
@@ -238,45 +247,52 @@ function LiveCommunications() {
       </div>
       <section className="sec">
         <h2>Claim email activity</h2>
-        {claims.loading && <p role="status">Loading authorised claims…</p>}
-        {claims.error && <p role="alert">{claims.error}</p>}
-        <label htmlFor="communication-claim">Claim</label>
-        <select
-          className="claim-selector"
-          id="communication-claim"
-          value={claimId ?? ""}
-          onChange={(event) => setSelected(event.target.value)}
-        >
-          <option value="" disabled>
-            Select a claim
-          </option>
-          {claims.data?.claims.map((claim) => (
-            <option key={claim.claimId} value={claim.claimId}>
-              {claim.policyNumber} · {claim.claimId}
-            </option>
-          ))}
-        </select>
-        <div className="acts">
-          <button
-            className="btn"
-            disabled={claims.loading}
-            onClick={() => void claims.refresh()}
-          >
-            Refresh claims
-          </button>
-          {cursor && (
-            <button className="btn" onClick={() => setCursor(null)}>
-              First claims page
-            </button>
-          )}
-          {claims.data?.nextToken && (
+        <p className="dim">
+          Persisted send attempts and SES provider events for one of your
+          claims. SES accepting a message is not the same as inbox delivery.
+        </p>
+        {claims.error && <Alert tone="bad">{claims.error}</Alert>}
+        <div className="picker">
+          <div className="picker-field">
+            <label htmlFor="communication-claim">Claim</label>
+            <select
+              className="claim-selector"
+              id="communication-claim"
+              value={claimId ?? ""}
+              onChange={(event) => setSelected(event.target.value)}
+            >
+              <option value="" disabled>
+                {claims.loading ? "Loading claims…" : "Select a claim"}
+              </option>
+              {claims.data?.claims.map((claim) => (
+                <option key={claim.claimId} value={claim.claimId}>
+                  {claim.policyNumber} · {claim.claimId}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="acts">
             <button
               className="btn"
-              onClick={() => setCursor(claims.data!.nextToken)}
+              disabled={claims.loading}
+              onClick={() => void claims.refresh()}
             >
-              Next claims page
+              Refresh claims
             </button>
-          )}
+            {cursor && (
+              <button className="btn" onClick={() => setCursor(null)}>
+                First claims page
+              </button>
+            )}
+            {claims.data?.nextToken && (
+              <button
+                className="btn"
+                onClick={() => setCursor(claims.data!.nextToken)}
+              >
+                Next claims page
+              </button>
+            )}
+          </div>
         </div>
         {claims.data && !claims.data.claims.length && (
           <p>No authorised claims returned.</p>
