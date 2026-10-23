@@ -38,9 +38,19 @@ six viewport widths (320–1920px), all views, state changes, navigation, keyboa
 interactions, reduced motion, accessibility, and console/hydration errors. CI runs
 the same checks. They do not claim live AWS authentication passed.
 
+Additional suites (all synthetic data, no AWS account access):
+
+```sh
+AGENTSHIELD_TEST_OPERATIONS=true npx playwright test tests/operations.spec.ts tests/claim-workflows.spec.ts
+AGENTSHIELD_TEST_REMOTE_MONITORING=true npx playwright test tests/remote-monitoring.spec.ts
+# Lambda unit tests (need boto3) and real handlers against simulated AWS (need moto)
+for d in claims-api operations-api monitoring-api; do (cd backend/$d && python -m unittest discover -s tests); done
+pip install "moto[dynamodb,s3,cloudwatch]" && (cd backend/integration-tests && python -m unittest -v test_integration)
+```
+
 ## Stack
 
-- Next.js 16.4.0 App Router, React 19.3.0, strict TypeScript 6.0.3.
+- Next.js 16.4.2 App Router, React 19.3.0, strict TypeScript 6.0.3.
 - Native CSS/SVG animations and charts; no charting or animation runtime.
 - Native system fonts; no external font or image requests.
 - Exact versions and npm lockfile for reproducible installs.
@@ -49,20 +59,20 @@ TypeScript 6 is intentional: the installed Next.js lint stack does not yet suppo
 
 ## Routes and editing
 
-| Route              | Purpose                                                    |
-| ------------------ | ---------------------------------------------------------- |
-| `/login`           | Cognito credential entry, challenges and password recovery |
-| `/logout`          | Account information and sign-out confirmation              |
-| `/`                | Command dashboard and operational storyline                |
-| `/claims`          | Filterable claims, desktop investigation workspace         |
-| `/claim/[uuid]` | Authorised claim details, uploads and optional persisted workflows |
-| `/security`        | Owner-scoped recorded document scan and quarantine evidence |
-| `/reliability`     | CloudWatch measurements, charts and monitored alarm states |
-| `/communications`  | Optional SES template reads and persisted email events |
+| Route             | Purpose                                                                              |
+| ----------------- | ------------------------------------------------------------------------------------ |
+| `/login`          | Cognito credential entry, challenges and password recovery                           |
+| `/logout`         | Account information and sign-out confirmation                                        |
+| `/`               | Overview: your claim counts, recent claims, monitored alarms, workflow backends      |
+| `/claims`         | Claims table with status filters, search, pagination and New claim dialog            |
+| `/claim/[uuid]`   | Claim tabs: Overview, Documents, Assessment, Approvals, Payments, Activity           |
+| `/security`       | Owner-scoped recorded document scan and quarantine evidence                          |
+| `/reliability`    | CloudWatch alarm states and API/Lambda measurements (operator-only)                  |
+| `/communications` | SES template preview, variables, content checks, versions & approval, email activity |
 
-- `lib/fixtures.json`: historical reference records; not a live-mode data source.
-- `lib/types.ts`: domain types.
 - `lib/live-claims.ts`, `lib/claims-api.ts`: live claim contract and authenticated server boundary.
+- `lib/documents-api.ts`, `lib/operations-api.ts`, `lib/monitoring/`: server-side clients for the staging APIs, with strict response validation.
+- `backend/`: Lambda sources (`claims-api`, `operations-api`, `monitoring-api`), their tests, `integration-tests/` (moto) and `staging/` (CloudFormation generator, packaging, change-set scripts). See `docs/release-rollback.md`.
 - `app/(protected)/`: server-authenticated operational pages, at their original URLs.
 - `lib/auth/`: Cognito SDK, JWT verification, encrypted sessions and CSRF controls.
 - `components/`: reusable React interaction and presentation components.
