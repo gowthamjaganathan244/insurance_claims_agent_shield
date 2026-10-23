@@ -29,7 +29,7 @@ for (const [prefix, text] of [
     await page.goto("/claims");
     await expect(page.locator("main")).toContainText(text);
     await expect(page.locator("main")).not.toContainText("Marlow");
-    await expect(page.locator(".queue .row")).toHaveCount(0);
+    await expect(page.locator(".claim-row")).toHaveCount(0);
   });
 }
 test("claim mutation requires CSRF and disallows status editing", async ({
@@ -52,7 +52,7 @@ test("claim mutation requires CSRF and disallows status editing", async ({
       })
     ).status(),
   ).toBe(400);
-  expect((await mutate(request, "/api/claims", {})).status()).toBe(405);
+  expect((await mutate(request, "/api/claims", {})).status()).toBe(400);
 });
 
 test("claims polling pauses while hidden and refreshes on return", async ({
@@ -65,7 +65,7 @@ test("claims polling pauses while hidden and refreshes on return", async ({
     if (new URL(request.url()).pathname === "/api/claims") reads++;
   });
   await page.goto("/claims");
-  await expect(page.locator(".queue")).toContainText("POL-TEST");
+  await expect(page.locator(".claims-table")).toContainText("POL-TEST");
   const initial = reads;
   await page.clock.fastForward(31000);
   await expect.poll(() => reads).toBeGreaterThan(initial);
@@ -90,4 +90,40 @@ test("claims polling pauses while hidden and refreshes on return", async ({
     document.dispatchEvent(new Event("visibilitychange"));
   });
   await expect.poll(() => reads).toBeGreaterThan(hidden);
+});
+
+test("claims table: filters derive from returned statuses, search, and accessible New claim dialog", async ({
+  page,
+}) => {
+  await login(page.request);
+  await page.goto("/claims");
+  const filters = page.getByRole("group", {
+    name: "Filter claims on this page",
+  });
+  await expect(filters.getByRole("button")).toHaveText(["All", "SUBMITTED"]);
+  const row = page.locator(".claim-row").first();
+  await expect(row).toContainText("11111111-1111-4111-8111-111111111111");
+  await expect(row.getByRole("link", { name: /View claim/ })).toHaveAttribute(
+    "href",
+    "/claim/11111111-1111-4111-8111-111111111111",
+  );
+  await page.getByLabel("Search claims on this page").fill("no-such-claim");
+  await expect(page.locator(".claim-row")).toHaveCount(0);
+  await expect(page.locator("main")).toContainText(
+    "No claims on this page match",
+  );
+  await page.getByLabel("Search claims on this page").fill("");
+  const opener = page.getByRole("button", { name: "New claim" });
+  await opener.click();
+  const dialog = page.getByRole("dialog", { name: "New claim" });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByLabel("Policy number")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  await expect(opener).toBeFocused();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
 });

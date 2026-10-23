@@ -1,6 +1,10 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
-export function useLiveClaims<T>(url: string) {
+export function useLiveClaims<T>(
+  url: string,
+  loader?: (url: string, signal: AbortSignal) => Promise<T>,
+  interval = 30000,
+) {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -13,14 +17,22 @@ export function useLiveClaims<T>(url: string) {
     active.current = controller;
     setLoading(true);
     try {
-      const response = await fetch(url, {
-        cache: "no-store",
-        signal: controller.signal,
-      });
-      const result = await response.json();
-      if (!response.ok) {
-        if (response.status === 401) window.location.replace("/login");
-        throw new Error(result.error ?? "Unable to load claims.");
+      let result: T;
+      if (loader) result = await loader(url, controller.signal);
+      else {
+        const response = await fetch(url, {
+          cache: "no-store",
+          signal: AbortSignal.any([
+            controller.signal,
+            AbortSignal.timeout(30000),
+          ]),
+        });
+        const body = await response.json();
+        if (!response.ok) {
+          if (response.status === 401) window.location.replace("/login");
+          throw new Error(body.error ?? "Unable to load claims.");
+        }
+        result = body;
       }
       if (!controller.signal.aborted) {
         setData(result);
@@ -40,7 +52,7 @@ export function useLiveClaims<T>(url: string) {
       if (active.current === controller) active.current = null;
       if (!controller.signal.aborted) setLoading(false);
     }
-  }, [url]);
+  }, [url, loader]);
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
     let disposed = false;
@@ -55,7 +67,7 @@ export function useLiveClaims<T>(url: string) {
       )
         timer = setTimeout(
           tick,
-          Math.min(120000, 30000 * 2 ** Math.min(failures.current, 2)),
+          Math.min(240000, interval * 2 ** Math.min(failures.current, 2)),
         );
     };
     const visibility = () => {
@@ -68,6 +80,8 @@ export function useLiveClaims<T>(url: string) {
     void tick();
     document.addEventListener("visibilitychange", visibility);
     const changed = () => {
+      active.current?.abort();
+      active.current = null;
       void refresh();
     };
     window.addEventListener("agentshield:claims-changed", changed);
@@ -79,6 +93,6 @@ export function useLiveClaims<T>(url: string) {
       document.removeEventListener("visibilitychange", visibility);
       window.removeEventListener("agentshield:claims-changed", changed);
     };
-  }, [refresh]);
+  }, [refresh, interval]);
   return { data, error, loading, updated, refresh };
 }

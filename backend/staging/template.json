@@ -1,0 +1,954 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "AgentShield isolated staging. Reads existing owned claims/documents; writes only new workflow table. No production updates.",
+  "Parameters": {
+    "ArtifactBucket": {
+      "Type": "String"
+    },
+    "DocumentsPackageKey": {
+      "Type": "String"
+    },
+    "OperationsPackageKey": {
+      "Type": "String"
+    },
+    "MonitoringPackageKey": {
+      "Type": "String"
+    },
+    "OperatorSubs": {
+      "Type": "String",
+      "Default": ""
+    },
+    "EnableEmail": {
+      "Type": "String",
+      "Default": "false",
+      "AllowedValues": [
+        "false",
+        "true"
+      ]
+    },
+    "SenderIdentity": {
+      "Type": "String",
+      "Default": ""
+    },
+    "SenderAddress": {
+      "Type": "String",
+      "Default": ""
+    },
+    "ApprovedRecipient": {
+      "Type": "String",
+      "Default": ""
+    }
+  },
+  "Conditions": {
+    "EmailEnabled": {
+      "Fn::Equals": [
+        {
+          "Ref": "EnableEmail"
+        },
+        "true"
+      ]
+    }
+  },
+  "Resources": {
+    "OperationsTable": {
+      "Type": "AWS::DynamoDB::Table",
+      "Properties": {
+        "BillingMode": "PAY_PER_REQUEST",
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "PK",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "SK",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "messageId",
+            "AttributeType": "S"
+          }
+        ],
+        "KeySchema": [
+          {
+            "AttributeName": "PK",
+            "KeyType": "HASH"
+          },
+          {
+            "AttributeName": "SK",
+            "KeyType": "RANGE"
+          }
+        ],
+        "GlobalSecondaryIndexes": [
+          {
+            "IndexName": "messageId-index",
+            "KeySchema": [
+              {
+                "AttributeName": "messageId",
+                "KeyType": "HASH"
+              }
+            ],
+            "Projection": {
+              "ProjectionType": "ALL"
+            }
+          }
+        ],
+        "SSESpecification": {
+          "SSEEnabled": true
+        }
+      },
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain"
+    },
+    "DocumentsLogs": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": {
+          "Fn::Sub": "/aws/lambda/${AWS::StackName}-documents"
+        },
+        "RetentionInDays": 3
+      }
+    },
+    "DocumentsRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "ScopedDataAccess",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                  ],
+                  "Resource": {
+                    "Fn::GetAtt": [
+                      "DocumentsLogs",
+                      "Arn"
+                    ]
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": "dynamodb:GetItem",
+                  "Resource": {
+                    "Fn::Sub": "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/agentshield-claims"
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": "dynamodb:Query",
+                  "Resource": {
+                    "Fn::Sub": "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/agentshield-documents/index/claimId-createdAt-index"
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "DocumentsFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "FunctionName": {
+          "Fn::Sub": "${AWS::StackName}-documents"
+        },
+        "Runtime": "python3.14",
+        "Architectures": [
+          "x86_64"
+        ],
+        "Handler": "lambda_function.lambda_handler",
+        "MemorySize": 128,
+        "Timeout": 20,
+        "Role": {
+          "Fn::GetAtt": [
+            "DocumentsRole",
+            "Arn"
+          ]
+        },
+        "Code": {
+          "S3Bucket": {
+            "Ref": "ArtifactBucket"
+          },
+          "S3Key": {
+            "Ref": "DocumentsPackageKey"
+          }
+        },
+        "Environment": {
+          "Variables": {
+            "TABLE_NAME": "agentshield-claims"
+          }
+        }
+      },
+      "DependsOn": "DocumentsLogs"
+    },
+    "OperationsLogs": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": {
+          "Fn::Sub": "/aws/lambda/${AWS::StackName}-operations"
+        },
+        "RetentionInDays": 3
+      }
+    },
+    "OperationsRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "ScopedDataAccess",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                  ],
+                  "Resource": {
+                    "Fn::GetAtt": [
+                      "OperationsLogs",
+                      "Arn"
+                    ]
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": "dynamodb:GetItem",
+                  "Resource": {
+                    "Fn::Sub": "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/agentshield-claims"
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": "dynamodb:GetItem",
+                  "Resource": {
+                    "Fn::Sub": "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/agentshield-documents"
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "dynamodb:GetItem",
+                    "dynamodb:PutItem",
+                    "dynamodb:UpdateItem",
+                    "dynamodb:Query"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::GetAtt": [
+                        "OperationsTable",
+                        "Arn"
+                      ]
+                    },
+                    {
+                      "Fn::Sub": "${OperationsTable.Arn}/index/messageId-index"
+                    }
+                  ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": "ses:GetEmailTemplate",
+                  "Resource": "*",
+                  "Condition": {
+                    "StringEquals": {
+                      "aws:RequestedRegion": {
+                        "Ref": "AWS::Region"
+                      }
+                    }
+                  }
+                },
+                {
+                  "Fn::If": [
+                    "EmailEnabled",
+                    {
+                      "Effect": "Allow",
+                      "Action": "cognito-idp:AdminGetUser",
+                      "Resource": {
+                        "Fn::Sub": "arn:${AWS::Partition}:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/ap-southeast-2_2uQnEvufy"
+                      }
+                    },
+                    {
+                      "Ref": "AWS::NoValue"
+                    }
+                  ]
+                },
+                {
+                  "Fn::If": [
+                    "EmailEnabled",
+                    {
+                      "Effect": "Allow",
+                      "Action": "ses:SendEmail",
+                      "Resource": [
+                        {
+                          "Fn::Sub": "arn:${AWS::Partition}:ses:${AWS::Region}:${AWS::AccountId}:identity/${SenderIdentity}"
+                        },
+                        {
+                          "Fn::Sub": "arn:${AWS::Partition}:ses:${AWS::Region}:${AWS::AccountId}:template/AgentShieldClaimCreated"
+                        },
+                        {
+                          "Fn::Sub": "arn:${AWS::Partition}:ses:${AWS::Region}:${AWS::AccountId}:configuration-set/${EmailConfiguration}"
+                        }
+                      ],
+                      "Condition": {
+                        "StringEquals": {
+                          "ses:FromAddress": {
+                            "Ref": "SenderAddress"
+                          }
+                        },
+                        "ForAllValues:StringEquals": {
+                          "ses:Recipients": [
+                            {
+                              "Ref": "ApprovedRecipient"
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    {
+                      "Ref": "AWS::NoValue"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "OperationsFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "FunctionName": {
+          "Fn::Sub": "${AWS::StackName}-operations"
+        },
+        "Runtime": "python3.14",
+        "Architectures": [
+          "x86_64"
+        ],
+        "Handler": "lambda_function.lambda_handler",
+        "MemorySize": 128,
+        "Timeout": 20,
+        "Role": {
+          "Fn::GetAtt": [
+            "OperationsRole",
+            "Arn"
+          ]
+        },
+        "Code": {
+          "S3Bucket": {
+            "Ref": "ArtifactBucket"
+          },
+          "S3Key": {
+            "Ref": "OperationsPackageKey"
+          }
+        },
+        "Environment": {
+          "Variables": {
+            "CLAIMS_TABLE": "agentshield-claims",
+            "DOCUMENTS_TABLE": "agentshield-documents",
+            "OPERATIONS_TABLE": {
+              "Ref": "OperationsTable"
+            },
+            "OPERATOR_SUBS": {
+              "Ref": "OperatorSubs"
+            },
+            "ENABLE_EMAIL_SEND": {
+              "Ref": "EnableEmail"
+            },
+            "SES_FROM_ADDRESS": {
+              "Ref": "SenderAddress"
+            },
+            "APPROVED_EMAIL_RECIPIENT": {
+              "Ref": "ApprovedRecipient"
+            },
+            "SES_CONFIGURATION_SET": {
+              "Fn::If": [
+                "EmailEnabled",
+                {
+                  "Ref": "EmailConfiguration"
+                },
+                ""
+              ]
+            },
+            "SES_TOPIC_ARN": {
+              "Fn::If": [
+                "EmailEnabled",
+                {
+                  "Ref": "EmailTopic"
+                },
+                ""
+              ]
+            }
+          }
+        }
+      },
+      "DependsOn": "OperationsLogs"
+    },
+    "MonitoringLogs": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": {
+          "Fn::Sub": "/aws/lambda/${AWS::StackName}-monitoring"
+        },
+        "RetentionInDays": 3
+      }
+    },
+    "MonitoringRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "CloudWatchRead",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                  ],
+                  "Resource": {
+                    "Fn::GetAtt": [
+                      "MonitoringLogs",
+                      "Arn"
+                    ]
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": "cloudwatch:DescribeAlarms",
+                  "Resource": [
+                    {
+                      "Fn::Sub": "arn:${AWS::Partition}:cloudwatch:${AWS::Region}:${AWS::AccountId}:alarm:AgentShield-API-Errors"
+                    },
+                    {
+                      "Fn::Sub": "arn:${AWS::Partition}:cloudwatch:${AWS::Region}:${AWS::AccountId}:alarm:AgentShield-Lambda-Errors"
+                    },
+                    {
+                      "Fn::Sub": "arn:${AWS::Partition}:cloudwatch:${AWS::Region}:${AWS::AccountId}:alarm:AgentShield-Lambda-Latency"
+                    }
+                  ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": "cloudwatch:GetMetricData",
+                  "Resource": "*",
+                  "Condition": {
+                    "StringEquals": {
+                      "aws:RequestedRegion": {
+                        "Ref": "AWS::Region"
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "MonitoringFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "FunctionName": {
+          "Fn::Sub": "${AWS::StackName}-monitoring"
+        },
+        "Runtime": "python3.14",
+        "Architectures": [
+          "x86_64"
+        ],
+        "Handler": "lambda_function.lambda_handler",
+        "MemorySize": 128,
+        "Timeout": 20,
+        "Role": {
+          "Fn::GetAtt": [
+            "MonitoringRole",
+            "Arn"
+          ]
+        },
+        "Code": {
+          "S3Bucket": {
+            "Ref": "ArtifactBucket"
+          },
+          "S3Key": {
+            "Ref": "MonitoringPackageKey"
+          }
+        },
+        "Environment": {
+          "Variables": {
+            "OPERATOR_SUBS": {
+              "Ref": "OperatorSubs"
+            }
+          }
+        }
+      },
+      "DependsOn": "MonitoringLogs"
+    },
+    "Api": {
+      "Type": "AWS::ApiGatewayV2::Api",
+      "Properties": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}-api"
+        },
+        "ProtocolType": "HTTP"
+      }
+    },
+    "Authorizer": {
+      "Type": "AWS::ApiGatewayV2::Authorizer",
+      "Properties": {
+        "ApiId": {
+          "Ref": "Api"
+        },
+        "Name": "ExistingCognito",
+        "AuthorizerType": "JWT",
+        "IdentitySource": [
+          "$request.header.Authorization"
+        ],
+        "JwtConfiguration": {
+          "Audience": [
+            "phikh6a6u25oi8be7nefavodi"
+          ],
+          "Issuer": "https://cognito-idp.ap-southeast-2.amazonaws.com/ap-southeast-2_2uQnEvufy"
+        }
+      }
+    },
+    "DocumentsIntegration": {
+      "Type": "AWS::ApiGatewayV2::Integration",
+      "Properties": {
+        "ApiId": {
+          "Ref": "Api"
+        },
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationMethod": "POST",
+        "IntegrationUri": {
+          "Fn::GetAtt": [
+            "DocumentsFunction",
+            "Arn"
+          ]
+        },
+        "PayloadFormatVersion": "2.0",
+        "TimeoutInMillis": 20000
+      }
+    },
+    "OperationsIntegration": {
+      "Type": "AWS::ApiGatewayV2::Integration",
+      "Properties": {
+        "ApiId": {
+          "Ref": "Api"
+        },
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationMethod": "POST",
+        "IntegrationUri": {
+          "Fn::GetAtt": [
+            "OperationsFunction",
+            "Arn"
+          ]
+        },
+        "PayloadFormatVersion": "2.0",
+        "TimeoutInMillis": 20000
+      }
+    },
+    "MonitoringIntegration": {
+      "Type": "AWS::ApiGatewayV2::Integration",
+      "Properties": {
+        "ApiId": {
+          "Ref": "Api"
+        },
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationMethod": "POST",
+        "IntegrationUri": {
+          "Fn::GetAtt": [
+            "MonitoringFunction",
+            "Arn"
+          ]
+        },
+        "PayloadFormatVersion": "2.0",
+        "TimeoutInMillis": 20000
+      }
+    },
+    "DocumentsRoute": {
+      "Type": "AWS::ApiGatewayV2::Route",
+      "Properties": {
+        "ApiId": {
+          "Ref": "Api"
+        },
+        "RouteKey": "GET /claims/{claimId}/documents",
+        "AuthorizationType": "JWT",
+        "AuthorizerId": {
+          "Ref": "Authorizer"
+        },
+        "Target": {
+          "Fn::Sub": "integrations/${DocumentsIntegration}"
+        }
+      }
+    },
+    "DocumentsPermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "DocumentsFunction"
+        },
+        "Action": "lambda:InvokeFunction",
+        "Principal": "apigateway.amazonaws.com",
+        "SourceAccount": {
+          "Ref": "AWS::AccountId"
+        },
+        "SourceArn": {
+          "Fn::Sub": "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${Api}/$default/GET/claims/*/documents"
+        }
+      }
+    },
+    "ReadOperationsRoute": {
+      "Type": "AWS::ApiGatewayV2::Route",
+      "Properties": {
+        "ApiId": {
+          "Ref": "Api"
+        },
+        "RouteKey": "GET /claims/{claimId}/operations",
+        "AuthorizationType": "JWT",
+        "AuthorizerId": {
+          "Ref": "Authorizer"
+        },
+        "Target": {
+          "Fn::Sub": "integrations/${OperationsIntegration}"
+        }
+      }
+    },
+    "ReadOperationsPermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "OperationsFunction"
+        },
+        "Action": "lambda:InvokeFunction",
+        "Principal": "apigateway.amazonaws.com",
+        "SourceAccount": {
+          "Ref": "AWS::AccountId"
+        },
+        "SourceArn": {
+          "Fn::Sub": "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${Api}/$default/GET/claims/*/operations"
+        }
+      }
+    },
+    "WriteOperationsRoute": {
+      "Type": "AWS::ApiGatewayV2::Route",
+      "Properties": {
+        "ApiId": {
+          "Ref": "Api"
+        },
+        "RouteKey": "POST /claims/{claimId}/operations",
+        "AuthorizationType": "JWT",
+        "AuthorizerId": {
+          "Ref": "Authorizer"
+        },
+        "Target": {
+          "Fn::Sub": "integrations/${OperationsIntegration}"
+        }
+      }
+    },
+    "WriteOperationsPermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "OperationsFunction"
+        },
+        "Action": "lambda:InvokeFunction",
+        "Principal": "apigateway.amazonaws.com",
+        "SourceAccount": {
+          "Ref": "AWS::AccountId"
+        },
+        "SourceArn": {
+          "Fn::Sub": "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${Api}/$default/POST/claims/*/operations"
+        }
+      }
+    },
+    "TemplatesRoute": {
+      "Type": "AWS::ApiGatewayV2::Route",
+      "Properties": {
+        "ApiId": {
+          "Ref": "Api"
+        },
+        "RouteKey": "GET /templates",
+        "AuthorizationType": "JWT",
+        "AuthorizerId": {
+          "Ref": "Authorizer"
+        },
+        "Target": {
+          "Fn::Sub": "integrations/${OperationsIntegration}"
+        }
+      }
+    },
+    "TemplatesPermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "OperationsFunction"
+        },
+        "Action": "lambda:InvokeFunction",
+        "Principal": "apigateway.amazonaws.com",
+        "SourceAccount": {
+          "Ref": "AWS::AccountId"
+        },
+        "SourceArn": {
+          "Fn::Sub": "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${Api}/$default/GET/templates"
+        }
+      }
+    },
+    "MonitoringRoute": {
+      "Type": "AWS::ApiGatewayV2::Route",
+      "Properties": {
+        "ApiId": {
+          "Ref": "Api"
+        },
+        "RouteKey": "GET /monitoring",
+        "AuthorizationType": "JWT",
+        "AuthorizerId": {
+          "Ref": "Authorizer"
+        },
+        "Target": {
+          "Fn::Sub": "integrations/${MonitoringIntegration}"
+        }
+      }
+    },
+    "MonitoringPermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "MonitoringFunction"
+        },
+        "Action": "lambda:InvokeFunction",
+        "Principal": "apigateway.amazonaws.com",
+        "SourceAccount": {
+          "Ref": "AWS::AccountId"
+        },
+        "SourceArn": {
+          "Fn::Sub": "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${Api}/$default/GET/monitoring"
+        }
+      }
+    },
+    "DeploymentInitial": {
+      "Type": "AWS::ApiGatewayV2::Deployment",
+      "Properties": {
+        "ApiId": {
+          "Ref": "Api"
+        }
+      },
+      "DependsOn": [
+        "DocumentsRoute",
+        "ReadOperationsRoute",
+        "WriteOperationsRoute",
+        "TemplatesRoute"
+      ]
+    },
+    "DeploymentMonitoring": {
+      "Type": "AWS::ApiGatewayV2::Deployment",
+      "Properties": {
+        "ApiId": {
+          "Ref": "Api"
+        },
+        "Description": "Adds GET /monitoring"
+      },
+      "DependsOn": [
+        "DocumentsRoute",
+        "ReadOperationsRoute",
+        "WriteOperationsRoute",
+        "TemplatesRoute",
+        "MonitoringRoute"
+      ]
+    },
+    "Stage": {
+      "Type": "AWS::ApiGatewayV2::Stage",
+      "Properties": {
+        "ApiId": {
+          "Ref": "Api"
+        },
+        "StageName": "$default",
+        "AutoDeploy": false,
+        "DeploymentId": {
+          "Ref": "DeploymentMonitoring"
+        },
+        "DefaultRouteSettings": {
+          "ThrottlingBurstLimit": 3,
+          "ThrottlingRateLimit": 1
+        }
+      }
+    },
+    "EmailConfiguration": {
+      "Type": "AWS::SES::ConfigurationSet",
+      "Properties": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}-email"
+        }
+      },
+      "Condition": "EmailEnabled"
+    },
+    "EmailTopic": {
+      "Type": "AWS::SNS::Topic",
+      "Properties": {},
+      "Condition": "EmailEnabled"
+    },
+    "EmailTopicPolicy": {
+      "Type": "AWS::SNS::TopicPolicy",
+      "Properties": {
+        "Topics": [
+          {
+            "Ref": "EmailTopic"
+          }
+        ],
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "ses.amazonaws.com"
+              },
+              "Action": "sns:Publish",
+              "Resource": {
+                "Ref": "EmailTopic"
+              },
+              "Condition": {
+                "StringEquals": {
+                  "AWS:SourceAccount": {
+                    "Ref": "AWS::AccountId"
+                  }
+                },
+                "ArnEquals": {
+                  "AWS:SourceArn": {
+                    "Fn::Sub": "arn:${AWS::Partition}:ses:${AWS::Region}:${AWS::AccountId}:identity/${SenderIdentity}"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "Condition": "EmailEnabled"
+    },
+    "EmailEvents": {
+      "Type": "AWS::SES::ConfigurationSetEventDestination",
+      "Properties": {
+        "ConfigurationSetName": {
+          "Ref": "EmailConfiguration"
+        },
+        "EventDestination": {
+          "Enabled": true,
+          "MatchingEventTypes": [
+            "DELIVERY",
+            "BOUNCE",
+            "COMPLAINT",
+            "REJECT",
+            "RENDERING_FAILURE",
+            "DELIVERY_DELAY"
+          ],
+          "SnsDestination": {
+            "TopicARN": {
+              "Ref": "EmailTopic"
+            }
+          }
+        }
+      },
+      "Condition": "EmailEnabled",
+      "DependsOn": [
+        "EmailTopicPolicy",
+        "EmailSubscription"
+      ]
+    },
+    "EmailPermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "OperationsFunction"
+        },
+        "Action": "lambda:InvokeFunction",
+        "Principal": "sns.amazonaws.com",
+        "SourceArn": {
+          "Ref": "EmailTopic"
+        },
+        "SourceAccount": {
+          "Ref": "AWS::AccountId"
+        }
+      },
+      "Condition": "EmailEnabled"
+    },
+    "EmailSubscription": {
+      "Type": "AWS::SNS::Subscription",
+      "Properties": {
+        "TopicArn": {
+          "Ref": "EmailTopic"
+        },
+        "Protocol": "lambda",
+        "Endpoint": {
+          "Fn::GetAtt": [
+            "OperationsFunction",
+            "Arn"
+          ]
+        }
+      },
+      "Condition": "EmailEnabled",
+      "DependsOn": "EmailPermission"
+    }
+  },
+  "Outputs": {
+    "ApiOrigin": {
+      "Value": {
+        "Fn::GetAtt": [
+          "Api",
+          "ApiEndpoint"
+        ]
+      }
+    },
+    "OperationsTable": {
+      "Value": {
+        "Ref": "OperationsTable"
+      }
+    },
+    "EmailSendingEnabled": {
+      "Value": {
+        "Ref": "EnableEmail"
+      }
+    }
+  }
+}
