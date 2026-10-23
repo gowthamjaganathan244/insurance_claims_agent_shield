@@ -124,9 +124,18 @@ test("connected workflow and communications forms remain accessible on mobile", 
   await page.setViewportSize({ width: 320, height: 900 });
   for (const path of [`/claim/${id}`, "/communications"]) {
     await page.goto(path);
-    if (path !== "/communications")
+    if (path !== "/communications") {
       await page.getByRole("tab", { name: "Assessment" }).click();
-    await expect(page.getByLabel("Reason / evidence note")).toBeVisible();
+      await expect(page.getByLabel("Reason / evidence note")).toBeVisible();
+    } else {
+      // Email sending is disabled unless the backend reports it enabled.
+      await expect(page.locator("main")).toContainText(
+        "Email sending is disabled on this server",
+      );
+      await expect(
+        page.getByRole("button", { name: "Submit recorded action" }),
+      ).toHaveCount(0);
+    }
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,

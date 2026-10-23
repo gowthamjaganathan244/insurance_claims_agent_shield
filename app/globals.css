@@ -3243,3 +3243,70 @@ h2 {
     transition: none;
   }
 }
+
+/* ===== Communications layout: same width system as other pages ===== */
+.comm-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  margin: 4px 0 14px;
+}
+.comm-bar p {
+  margin: 0;
+}
+.comm-name {
+  color: var(--fg);
+  font-weight: 500;
+}
+.comm-card {
+  width: 100%;
+}
+.comm-card > .glass {
+  width: 100%;
+  margin: 0;
+  padding: clamp(16px, 2.4vw, 26px);
+  box-sizing: border-box;
+}
+.comm-card .tabs {
+  flex-wrap: wrap;
+  width: fit-content;
+  max-width: 100%;
+  overflow: visible;
+  border-radius: 18px;
+}
+.comm-card .tab-panel pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 10px 0;
+}
+.picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px 16px;
+  margin: 10px 0 18px;
+}
+.picker-field {
+  flex: 1 1 360px;
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+.picker-field .claim-selector {
+  width: 100%;
+}
+.picker .acts {
+  margin: 0;
+}
+.ops .record-form {
+  margin: 14px 0;
+}
+.ops h3 {
+  margin: 22px 0 6px;
+}
+.ops .record-form .btn {
+  justify-self: start;
+  margin-top: 6px;
+}

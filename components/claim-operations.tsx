@@ -6,6 +6,7 @@ import { Alert, DataState, Kpis, Pill } from "./ui";
 interface OperationData {
   version: number;
   canOperate: boolean;
+  emailEnabled?: boolean;
   assessment: Record<string, unknown> | null;
   decision: Record<string, unknown> | null;
   payment: Record<string, unknown> | null;
@@ -104,7 +105,15 @@ export function ClaimOperations({
       {data && (
         <>
           <Summary mode={mode} data={data} />
+          {mode === "email" && data.emailEnabled !== true ? (
+            <Alert>
+              Email sending is disabled on this server, so no message can be
+              sent from here. Enabling it needs an approved sender, a verified
+              test recipient and delivery tracking.
+            </Alert>
+          ) : null}
           {actions.length > 0 &&
+            !(mode === "email" && data.emailEnabled !== true) &&
             (data.canOperate ? (
               <form
                 className="pane record-form"

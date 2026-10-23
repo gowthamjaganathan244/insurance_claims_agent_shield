@@ -234,6 +234,7 @@ def lambda_handler(event, context):
             result = operations_table.query(**query)
             cursor = result.get('LastEvaluatedKey')
             return reply(200, {'version': current['version'], 'canOperate': operator(owner),
+                'emailEnabled': os.environ.get('ENABLE_EMAIL_SEND') == 'true',
                 'assessment': current.get('assessment'), 'decision': current.get('decision'), 'payment': current.get('payment'),
                 'events': [public_event(item) for item in result.get('Items',[]) if item.get('ownerSub') == owner],
                 'nextToken': base64.urlsafe_b64encode(json.dumps({**cursor,'ownerSub':owner}).encode()).decode() if cursor else None})

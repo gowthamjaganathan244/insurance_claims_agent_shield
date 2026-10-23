@@ -226,6 +226,8 @@ export async function operationsApi(
   return {
     version: data.version,
     canOperate: data.canOperate,
+    // Absent on older deployments: treat as disabled, never as enabled.
+    emailEnabled: data.emailEnabled === true,
     assessment: data.assessment,
     decision: data.decision,
     payment: data.payment,

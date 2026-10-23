@@ -72,10 +72,12 @@ export function ReliabilityMonitoring() {
             {metricGaps(data.metrics).length > 0 && (
               <p className="dim">
                 {metricGaps(data.metrics).length} of {data.metrics.length}{" "}
-                metric series returned no complete data in this window (for
-                example, a function that was not invoked). Missing data is shown
-                as missing, not as healthy, and does not change the alarm
-                status.
+                metric series returned no complete data in this one-hour
+                window. API Gateway and Lambda publish datapoints only when they
+                are called, so an empty but successful query means no recorded
+                activity in the window, not a fault; a broken integration shows
+                as an error above instead. Missing data is never shown as zero
+                and does not change the alarm status.
               </p>
             )}
             {data.alarms.map((alarm) => (
