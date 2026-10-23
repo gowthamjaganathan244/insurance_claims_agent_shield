@@ -23,6 +23,7 @@ export function issueCsrf(request: NextRequest) {
 }
 export async function readMutation(
   request: NextRequest,
+  maxBytes = 16384,
 ): Promise<Record<string, unknown>> {
   if (
     request.headers.get("origin") !== authConfig().origin ||
@@ -58,7 +59,7 @@ export async function readMutation(
     const { done, value } = await reader.read();
     if (done) break;
     size += value.length;
-    if (size > 16384) {
+    if (size > maxBytes) {
       await reader.cancel();
       throw new AuthError("Form is too large.", 413);
     }

@@ -768,6 +768,70 @@
         }
       }
     },
+    "TemplateVersionsReadRoute": {
+      "Type": "AWS::ApiGatewayV2::Route",
+      "Properties": {
+        "ApiId": {
+          "Ref": "Api"
+        },
+        "RouteKey": "GET /templates/versions",
+        "AuthorizationType": "JWT",
+        "AuthorizerId": {
+          "Ref": "Authorizer"
+        },
+        "Target": {
+          "Fn::Sub": "integrations/${OperationsIntegration}"
+        }
+      }
+    },
+    "TemplateVersionsReadPermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "OperationsFunction"
+        },
+        "Action": "lambda:InvokeFunction",
+        "Principal": "apigateway.amazonaws.com",
+        "SourceAccount": {
+          "Ref": "AWS::AccountId"
+        },
+        "SourceArn": {
+          "Fn::Sub": "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${Api}/$default/GET/templates/versions"
+        }
+      }
+    },
+    "TemplateVersionsWriteRoute": {
+      "Type": "AWS::ApiGatewayV2::Route",
+      "Properties": {
+        "ApiId": {
+          "Ref": "Api"
+        },
+        "RouteKey": "POST /templates/versions",
+        "AuthorizationType": "JWT",
+        "AuthorizerId": {
+          "Ref": "Authorizer"
+        },
+        "Target": {
+          "Fn::Sub": "integrations/${OperationsIntegration}"
+        }
+      }
+    },
+    "TemplateVersionsWritePermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "OperationsFunction"
+        },
+        "Action": "lambda:InvokeFunction",
+        "Principal": "apigateway.amazonaws.com",
+        "SourceAccount": {
+          "Ref": "AWS::AccountId"
+        },
+        "SourceArn": {
+          "Fn::Sub": "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${Api}/$default/POST/templates/versions"
+        }
+      }
+    },
     "DeploymentInitial": {
       "Type": "AWS::ApiGatewayV2::Deployment",
       "Properties": {
@@ -798,6 +862,24 @@
         "MonitoringRoute"
       ]
     },
+    "DeploymentTemplateVersions": {
+      "Type": "AWS::ApiGatewayV2::Deployment",
+      "Properties": {
+        "ApiId": {
+          "Ref": "Api"
+        },
+        "Description": "Adds GET/POST /templates/versions"
+      },
+      "DependsOn": [
+        "DocumentsRoute",
+        "ReadOperationsRoute",
+        "WriteOperationsRoute",
+        "TemplatesRoute",
+        "MonitoringRoute",
+        "TemplateVersionsReadRoute",
+        "TemplateVersionsWriteRoute"
+      ]
+    },
     "Stage": {
       "Type": "AWS::ApiGatewayV2::Stage",
       "Properties": {
@@ -807,7 +889,7 @@
         "StageName": "$default",
         "AutoDeploy": false,
         "DeploymentId": {
-          "Ref": "DeploymentMonitoring"
+          "Ref": "DeploymentTemplateVersions"
         },
         "DefaultRouteSettings": {
           "ThrottlingBurstLimit": 3,

@@ -26,7 +26,8 @@ export async function operationsApi(
     throw new AuthError("Operations backend configuration is invalid.", 503);
   if (
     !/^\/claims\/[A-Za-z0-9_-]{1,128}\/operations$/.test(path) &&
-    path !== "/templates"
+    path !== "/templates" &&
+    path !== "/templates/versions"
   )
     throw new AuthError("Invalid operation.");
   if (token && (token.length > 4096 || !/^[A-Za-z0-9_=-]+$/.test(token)))
@@ -58,7 +59,7 @@ export async function operationsApi(
         : 503,
     );
   const raw = await response.text();
-  if (raw.length > 524288)
+  if (raw.length > 2097152)
     throw new AuthError("Operations response is too large.", 502);
   const data = JSON.parse(raw);
   const invalid = () => {
@@ -81,6 +82,81 @@ export async function operationsApi(
               "Email attempt recorded; acceptance is unknown. Do not resend automatically.",
           }
         : {}),
+    };
+  }
+  if (path === "/templates/versions") {
+    const str = (v: unknown) => typeof v === "string";
+    if (
+      data.template !== "AgentShieldClaimCreated" ||
+      !Number.isSafeInteger(data.stateVersion) ||
+      !Number.isSafeInteger(data.latest) ||
+      !(data.approved === null || Number.isSafeInteger(data.approved)) ||
+      data.publishedToSes !== false ||
+      !Array.isArray(data.versions) ||
+      !Array.isArray(data.events)
+    )
+      invalid();
+    const statuses = [
+      "IMPORTED",
+      "DRAFT",
+      "APPROVED",
+      "REJECTED",
+      "SUPERSEDED",
+    ];
+    return {
+      template: data.template,
+      stateVersion: data.stateVersion,
+      latest: data.latest,
+      approved: data.approved,
+      publishedToSes: false,
+      versions: data.versions.map((v: Record<string, unknown>) => {
+        if (
+          !v ||
+          !Number.isSafeInteger(v.number) ||
+          !statuses.includes(String(v.status)) ||
+          !["SES_CURRENT", "OPERATOR_DRAFT"].includes(String(v.source)) ||
+          ![v.subject, v.text, v.html, v.createdAt].every(str) ||
+          !Number.isFinite(Date.parse(String(v.createdAt))) ||
+          typeof v.authoredByYou !== "boolean"
+        )
+          invalid();
+        return {
+          number: v.number,
+          status: v.status,
+          source: v.source,
+          subject: v.subject,
+          text: v.text,
+          html: v.html,
+          note: str(v.note) ? v.note : "",
+          createdAt: v.createdAt,
+          reviewedAt: str(v.reviewedAt) ? v.reviewedAt : null,
+          reviewNote: str(v.reviewNote) ? v.reviewNote : null,
+          selfApproved: v.selfApproved === true,
+          authoredByYou: v.authoredByYou,
+        };
+      }),
+      events: data.events.map((e: Record<string, unknown>) => {
+        if (
+          !e ||
+          !str(e.eventId) ||
+          !str(e.action) ||
+          !str(e.createdAt) ||
+          !Number.isFinite(Date.parse(String(e.createdAt)))
+        )
+          invalid();
+        return {
+          eventId: e.eventId,
+          action: e.action,
+          createdAt: e.createdAt,
+          details:
+            e.details &&
+            typeof e.details === "object" &&
+            !Array.isArray(e.details)
+              ? e.details
+              : {},
+          byYou: e.byYou === true,
+        };
+      }),
     };
   }
   if (path === "/templates") {
