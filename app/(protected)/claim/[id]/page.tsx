@@ -16,7 +16,10 @@ export default async function ClaimPage({
     notFound();
   return (
     <main id="app" tabIndex={-1}>
-      <LiveClaimDetail id={id} />
+      <LiveClaimDetail
+        id={id}
+        operationsEnabled={Boolean(process.env.OPERATIONS_API_ORIGIN)}
+      />
     </main>
   );
 }

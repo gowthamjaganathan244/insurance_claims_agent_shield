@@ -5,7 +5,7 @@ import { ownedClaim } from "./live-claims";
 import { AuthError } from "./auth/cognito";
 
 export async function claimsApi(
-  method: "GET" | "PATCH" | "DELETE",
+  method: "GET" | "POST" | "PATCH" | "DELETE",
   id?: string,
   cursor?: string,
   body?: object,
@@ -59,9 +59,9 @@ export async function claimsApi(
   }
   try {
     const data = await response.json();
-    if (id) {
+    if (id || method === "POST") {
       const claim = ownedClaim(data, session.identity.sub);
-      if (!claim || claim.claimId !== id)
+      if (!claim || (id && claim.claimId !== id))
         throw new AuthError("Claim not found.", 404);
       return claim;
     }

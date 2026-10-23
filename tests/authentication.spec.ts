@@ -71,9 +71,9 @@ test("verified sign-in survives refresh and login redirects without exposing tok
   await page.getByLabel("Password", { exact: true }).fill(testPassword);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page).toHaveURL("http://127.0.0.1:3100/");
-  await expect(page.locator("h1")).toContainText("overview.");
+  await expect(page.locator("h1")).toContainText("Overview");
   await page.reload();
-  await expect(page.locator("h1")).toContainText("overview.");
+  await expect(page.locator("h1")).toContainText("Overview");
   await page.goto("/login");
   await expect(page).toHaveURL("http://127.0.0.1:3100/");
   const cookies = await context.cookies();
@@ -303,7 +303,7 @@ test("logout revokes the server session, clears cookies, and Back cannot restore
   await attacker.dispose();
   await page.goBack();
   await expect(page).toHaveURL(/\/login$/);
-  await expect(page.locator(".queue")).toHaveCount(0);
+  await expect(page.locator(".claims-table")).toHaveCount(0);
 });
 
 test("login stays usable on narrow screens", async ({ page }) => {

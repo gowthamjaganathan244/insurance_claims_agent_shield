@@ -6,12 +6,15 @@ export function Tabs({
   onChange,
   children,
   label,
+  remount = true,
 }: {
   labels: string[];
   active: number;
   onChange: (index: number) => void;
   children: ReactNode;
   label: string;
+  /** false keeps panel children mounted across tabs (preserves fetched data). */
+  remount?: boolean;
 }) {
   const id = useId();
   return (
@@ -51,7 +54,7 @@ export function Tabs({
         aria-labelledby={`${id}-tab-${active}`}
         tabIndex={0}
         className="tab-panel"
-        key={active}
+        key={remount ? active : undefined}
       >
         {children}
       </div>

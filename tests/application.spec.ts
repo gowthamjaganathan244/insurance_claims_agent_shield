@@ -21,6 +21,9 @@ test("all views render without errors or horizontal overflow", async ({
     for (const route of routes) {
       await page.goto(route);
       await expect(page.locator("h1")).toBeVisible();
+      // Let the page's own data requests settle: WebKit logs navigation-cancelled
+      // same-origin fetches as "access control checks" console errors.
+      await page.waitForLoadState("networkidle");
       expect(
         await page.evaluate(
           () => document.documentElement.scrollWidth <= innerWidth,
@@ -35,8 +38,8 @@ test("live claims support description updates and confirmed cancellation", async
   page,
 }) => {
   await page.goto("/claims");
-  await expect(page.locator(".queue")).toContainText("POL-TEST");
-  await expect(page.locator(".queue")).not.toContainText("Marlow");
+  await expect(page.locator(".claims-table")).toContainText("POL-TEST");
+  await expect(page.locator(".claims-table")).not.toContainText("Marlow");
   await page.goto("/claim/11111111-1111-4111-8111-111111111111");
   await page
     .getByLabel("Description", { exact: true })
@@ -62,7 +65,7 @@ test("live claims support description updates and confirmed cancellation", async
   await expect(page.locator(".pane .tag")).toHaveText("CANCELLED");
   await page.goto("/claims");
   await page.getByRole("button", { name: "CANCELLED", exact: true }).click();
-  await expect(page.locator(".queue .row")).toHaveCount(1);
+  await expect(page.locator(".claim-row")).toHaveCount(1);
 });
 test("communications shows unavailable data with accessible tabs", async ({
   page,
@@ -122,14 +125,9 @@ test("disconnected pages never present fictional evidence or healthy monitoring"
     );
     await expect(page.locator(".live")).toHaveText("Health unavailable");
     await expect(page.locator("main")).toContainText(
-      /not connected|Not connected|unavailable/,
+      /not connected|Not connected|not configured|unavailable|Unavailable|No document records returned/,
     );
   }
-  await page.goto("/security");
-  await page.locator("summary").click();
-  await expect(page.locator("details")).not.toHaveAttribute("open", "");
-  await page.locator("summary").press("Enter");
-  await expect(page.locator("details")).toHaveAttribute("open", "");
   await page.goto("/reliability");
   await expect(page.getByRole("slider")).toHaveCount(0);
   await expect(page.locator(".chart svg")).toHaveCount(0);
@@ -176,7 +174,7 @@ test("low-powered devices disable costly motion and backdrop effects", async ({
   await page.addInitScript(() =>
     Object.defineProperty(navigator, "hardwareConcurrency", { get: () => 2 }),
   );
-  await page.goto("/");
+  await page.goto("/communications");
   await expect(page.locator("html")).toHaveAttribute("data-motion", "reduced");
   for (const selector of [".lq", ".isl"]) {
     const styles = await page

@@ -10,7 +10,7 @@ server session.
 
 ```sh
 npm ci
-cp .env.example .env.local
+[ -f .env.local ] || cp .env.example .env.local
 # Set AUTH_SESSION_KEY to a random 32-byte hex value before starting.
 npm run dev
 ```
@@ -38,9 +38,19 @@ six viewport widths (320–1920px), all views, state changes, navigation, keyboa
 interactions, reduced motion, accessibility, and console/hydration errors. CI runs
 the same checks. They do not claim live AWS authentication passed.
 
+Additional suites (all synthetic data, no AWS account access):
+
+```sh
+AGENTSHIELD_TEST_OPERATIONS=true npx playwright test tests/operations.spec.ts tests/claim-workflows.spec.ts
+AGENTSHIELD_TEST_REMOTE_MONITORING=true npx playwright test tests/remote-monitoring.spec.ts
+# Lambda unit tests (need boto3) and real handlers against simulated AWS (need moto)
+for d in claims-api operations-api monitoring-api; do (cd backend/$d && python -m unittest discover -s tests); done
+pip install "moto[dynamodb,s3,cloudwatch]" && (cd backend/integration-tests && python -m unittest -v test_integration)
+```
+
 ## Stack
 
-- Next.js 16.4.0 App Router, React 19.3.0, strict TypeScript 6.0.3.
+- Next.js 16.4.2 App Router, React 19.3.0, strict TypeScript 6.0.3.
 - Native CSS/SVG animations and charts; no charting or animation runtime.
 - Native system fonts; no external font or image requests.
 - Exact versions and npm lockfile for reproducible installs.
@@ -49,20 +59,20 @@ TypeScript 6 is intentional: the installed Next.js lint stack does not yet suppo
 
 ## Routes and editing
 
-| Route              | Purpose                                                    |
-| ------------------ | ---------------------------------------------------------- |
-| `/login`           | Cognito credential entry, challenges and password recovery |
-| `/logout`          | Account information and sign-out confirmation              |
-| `/`                | Command dashboard and operational storyline                |
-| `/claims`          | Filterable claims, desktop investigation workspace         |
-| `/claim/CLM-48213` | Claim journey, evidence, actions, payment and audit        |
-| `/security`        | Expandable incident investigations                         |
-| `/reliability`     | Latency chart, service health, deployment history          |
-| `/communications`  | Template editing, variables, history and delivery          |
+| Route             | Purpose                                                                              |
+| ----------------- | ------------------------------------------------------------------------------------ |
+| `/login`          | Cognito credential entry, challenges and password recovery                           |
+| `/logout`         | Account information and sign-out confirmation                                        |
+| `/`               | Overview: your claim counts, recent claims, monitored alarms, workflow backends      |
+| `/claims`         | Claims table with status filters, search, pagination and New claim dialog            |
+| `/claim/[uuid]`   | Claim tabs: Overview, Documents, Assessment, Approvals, Payments, Activity           |
+| `/security`       | Owner-scoped recorded document scan and quarantine evidence                          |
+| `/reliability`    | CloudWatch alarm states and API/Lambda measurements (operator-only)                  |
+| `/communications` | SES template preview, variables, content checks, versions & approval, email activity |
 
-- `lib/fixtures.json`: exact reference records and message content.
-- `lib/types.ts`: domain types.
-- `lib/claims.ts`: shared claim rules, formatting and deterministic sample generation.
+- `lib/live-claims.ts`, `lib/claims-api.ts`: live claim contract and authenticated server boundary.
+- `lib/documents-api.ts`, `lib/operations-api.ts`, `lib/monitoring/`: server-side clients for the staging APIs, with strict response validation.
+- `backend/`: Lambda sources (`claims-api`, `operations-api`, `monitoring-api`), their tests, `integration-tests/` (moto) and `staging/` (CloudFormation generator, packaging, change-set scripts). See `docs/release-rollback.md`.
 - `app/(protected)/`: server-authenticated operational pages, at their original URLs.
 - `lib/auth/`: Cognito SDK, JWT verification, encrypted sessions and CSRF controls.
 - `components/`: reusable React interaction and presentation components.
@@ -75,15 +85,29 @@ The Claims list and UUID claim detail routes now call the existing AWS claims AP
 through session-verified Next.js handlers. They have no demonstration fallback.
 Only owner-matching records are projected into the browser; historical unowned
 records are excluded. Description editing and cancellation use the supported
-PATCH/DELETE contracts. Creation is not enabled because it sends a real SES email.
+PATCH/DELETE contracts. The creation form requires explicit acknowledgement of the
+existing SES confirmation-email side effect. Document upload uses signed S3 POST
+and the existing completion handler; neither scan completion nor delivery is assumed.
 
-Command, Security, Reliability and Communications show explicit unavailable states
-until their data sources are connected. No demo provider or fictional operational
+Command keeps first-page recent claims and follows up to 10 pages for distinct
+claim/status counts, with a 30-second deadline and explicit partial-result labels.
+It does not claim account-wide totals or fabricate workflow stages.
+Reliability and navbar monitoring use an authenticated, explicitly allowlisted
+CloudWatch endpoint. Temporary server AWS credentials are required; live verification
+is pending. See [monitoring setup and IAM proposal](docs/reliability-live-monitoring.md).
+Security reads the optional owner-authorised document endpoint. Communications,
+assessments, approvals and non-transfer payment records use a separate optional
+operations backend. Both show errors/unavailable states until deployed and configured.
+The new operations backend is packaged locally; real email is disabled by default. No demo provider or fictional operational
 record is mounted on live routes. Historical fixture/reference files remain in the
-repository but are not a runtime fallback. Navbar monitoring shows Health unavailable.
+repository but are not a runtime fallback. Missing monitoring shows Health unavailable.
 See [truthful live screens](docs/live-data-phase1.md) for the source inventory and next gates.
 
-See [Phase 1 implementation and verification](docs/phase1-claims-implementation.md).
+See [current local functionality and live blockers](docs/task11-functional-implementation.md)
+and the [isolated staging candidate](backend/staging/README.md).
+For optional workflow browser tests, run
+`AGENTSHIELD_TEST_OPERATIONS=true npm run test:e2e -- tests/operations.spec.ts`.
+See [historical Phase 1 implementation and verification](docs/phase1-claims-implementation.md).
 Live API success, DynamoDB ID comparison and second-user isolation must be
 recorded separately from automated contract-fixture tests.
 
