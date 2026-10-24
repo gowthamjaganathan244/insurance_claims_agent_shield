@@ -7,7 +7,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await readMutation(request);
     const username = textField(body, "username", 128);
-    if (!rateLimit(`recovery:${username.toLowerCase()}`, 8))
+    if (!(await rateLimit(`recovery:${username.toLowerCase()}`, 8)))
       throw new AuthError("Too many recovery attempts. Please wait.", 429);
     if (body.action === "confirm") {
       const code = textField(body, "code", 8);

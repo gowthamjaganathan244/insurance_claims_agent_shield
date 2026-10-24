@@ -26,6 +26,7 @@ jobs:
           npm run test:e2e
           AGENTSHIELD_TEST_OPERATIONS=true npx playwright test tests/operations.spec.ts tests/claim-workflows.spec.ts --project=chromium --project=mobile
           AGENTSHIELD_TEST_REMOTE_MONITORING=true npx playwright test tests/remote-monitoring.spec.ts --project=chromium --project=mobile
+          AGENTSHIELD_TEST_REDIS=true npx playwright test tests/authentication.spec.ts tests/api-contract.spec.ts --project=chromium
       - if: failure()
         uses: actions/upload-artifact@v4
         with:
@@ -58,6 +59,9 @@ jobs:
       - name: Real Lambda handlers against simulated AWS (synthetic data)
         run: python -m unittest -v test_integration
         working-directory: backend/integration-tests
+      - name: Deployed malware processor against simulated AWS
+        run: python -m unittest discover -s tests -v
+        working-directory: backend/malware-processor
   infrastructure:
     runs-on: ubuntu-latest
     timeout-minutes: 10

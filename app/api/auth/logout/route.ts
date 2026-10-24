@@ -18,8 +18,8 @@ export async function POST(request: NextRequest) {
     const id = request.cookies.get(SESSION_COOKIE)?.value;
     const session = await getRecord<Session>("session", id);
     // Delete before the network request; a captured cookie cannot restore this session.
-    removeRecord(id);
-    removeRecord(request.cookies.get(CHALLENGE_COOKIE)?.value);
+    await removeRecord(id);
+    await removeRecord(request.cookies.get(CHALLENGE_COOKIE)?.value);
     let revoked = true;
     if (session)
       await revoke(session.value.tokens).catch(() => {
