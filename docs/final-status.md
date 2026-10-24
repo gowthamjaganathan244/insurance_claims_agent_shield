@@ -31,9 +31,13 @@ tests. Nothing below is estimated or simulated unless marked.
 
 - SES template `AgentShieldClaimCreated` exists; SES is in the sandbox (200/24h,
   only verified addresses receive mail), so tests cannot reach real customers.
-- Template versioning is deployed. The operations table holds `VERSION#00001`,
-  source `SES_CURRENT`, status `IMPORTED` — the live import was performed.
+- Template versioning is deployed and verified live: v1 imported from SES, v2 drafted
+  and approved (self-approval, labelled), with the audit history shown in the UI.
 - Approval is recorded only; the live SES template is never modified by the app.
+- **Out of demo scope (explicit):** sending operator emails and delivery tracking.
+  Staging runs with `EnableEmail=false` and SES is in the sandbox, so the UI hides
+  the send form and never shows a delivery status it cannot prove. Claim-created
+  confirmation emails (production Claims API) are sent to verified addresses only.
 
 ## Use case 3 — API performance investigation (Task 10, real data)
 
@@ -94,6 +98,23 @@ The latency alarm stayed OK. No incident was manufactured.
   Billing → Cost Explorer for actual spend. Also check SageMaker → Notebooks: a log
   group exists, and a running notebook instance bills hourly.
 
+## 12-task tracker
+
+| #   | Task                     | Status                                                     |
+| --- | ------------------------ | ---------------------------------------------------------- |
+| 1   | DynamoDB claims          | Complete                                                   |
+| 2   | Secure S3 storage        | Complete (public access blocked, SSE, versioning)          |
+| 3   | Lambda backend           | Complete                                                   |
+| 4   | API Gateway + JWT        | Complete (every AgentShield route uses the JWT authorizer) |
+| 5   | Two-user isolation       | Tests pass; live test with a second user pending           |
+| 6   | Secure uploads           | Earlier live test passed                                   |
+| 7   | Claims UI integration    | Complete                                                   |
+| 8   | Malware scanning         | Rule enabled; fresh live scan pending                      |
+| 9   | SES communications       | Versioning live; sending/delivery out of demo scope        |
+| 10  | CloudWatch monitoring    | Live; hosted-site check pending                            |
+| 11  | Authentication + hosting | Local works; Vercel deployment pending                     |
+| 12  | Cost and cleanup         | Budget exists; final review pending                        |
+
 ## Acceptance matrix
 
 | Area                          | Result                      | Evidence                                             |
@@ -104,7 +125,7 @@ The latency alarm stayed OK. No incident was manufactured.
 | Owner isolation               | PASS (tests) / live BLOCKED | Needs a second Cognito user                          |
 | Documents + malware scan      | PASS (earlier live)         | DynamoDB states above; rule now disabled             |
 | Operations workflows          | PASS (tests)                | moto + browser suites                                |
-| Template versioning           | PASS (import live)          | `VERSION#00001 IMPORTED`                             |
+| Template versioning           | PASS (live)                 | v1 imported, v2 approved, audit history              |
 | Reliability/monitoring        | PASS                        | Live alarms and metrics                              |
 | UI layout/a11y                | PASS                        | 256 browser runs, axe, 320–1920 px                   |
 | CI                            | PASS                        | GitHub Actions                                       |
