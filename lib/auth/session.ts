@@ -42,7 +42,7 @@ export async function readSession(id?: string): Promise<Session | null> {
     if (identity.expires > now() + 60) return { ...record.value, identity };
   } catch (error) {
     if (!(error instanceof errors.JWTExpired)) {
-      removeRecord(id);
+      await removeRecord(id);
       return null;
     }
   }
@@ -51,9 +51,9 @@ export async function readSession(id?: string): Promise<Session | null> {
     pending = (async () => {
       let owner: string | null = null;
       try {
-        // SQLite lease also serializes refreshes across Next route bundles/processes.
+        // The store lease also serializes refreshes across Next route bundles/processes.
         for (let attempt = 0; attempt < 150 && !owner; attempt++) {
-          owner = acquireRefreshLock(id);
+          owner = await acquireRefreshLock(id);
           if (!owner) await new Promise((resolve) => setTimeout(resolve, 100));
         }
         if (!owner) return null;
@@ -74,9 +74,9 @@ export async function readSession(id?: string): Promise<Session | null> {
         // A logout won the race while Cognito refreshed. Revoke the new token too.
         await revoke(tokens).catch(() => undefined);
       } catch {
-        removeRecord(id);
+        await removeRecord(id);
       } finally {
-        if (owner) releaseRefreshLock(id, owner);
+        if (owner) await releaseRefreshLock(id, owner);
       }
       return null;
     })().finally(() => refreshing.delete(id));

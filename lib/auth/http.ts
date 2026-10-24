@@ -46,7 +46,7 @@ export async function readMutation(
     );
   if (request.headers.get("content-type")?.split(";")[0] !== "application/json")
     throw new AuthError("Expected a JSON form.", 415);
-  if (!rateLimit(`browser:${cookie}`, 80))
+  if (!(await rateLimit(`browser:${cookie}`, 80)))
     throw new AuthError(
       "Too many attempts. Please wait before trying again.",
       429,

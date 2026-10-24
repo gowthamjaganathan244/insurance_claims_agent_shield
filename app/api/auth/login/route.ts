@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
       );
       if (!consumed)
         throw new AuthError("Your sign-in attempt expired. Start again.", 401);
-      if (!rateLimit(`challenge:${consumed.value.username}`, 20))
+      if (!(await rateLimit(`challenge:${consumed.value.username}`, 20)))
         throw new AuthError(
           "Too many verification attempts. Please wait.",
           429,
@@ -58,12 +58,12 @@ export async function POST(request: NextRequest) {
     } else {
       const username = textField(body, "username", 128);
       const password = textField(body, "password");
-      if (!rateLimit(`login:${username.toLowerCase()}`, 15))
+      if (!(await rateLimit(`login:${username.toLowerCase()}`, 15)))
         throw new AuthError(
           "Too many sign-in attempts. Please wait before trying again.",
           429,
         );
-      removeRecord(request.cookies.get(CHALLENGE_COOKIE)?.value);
+      await removeRecord(request.cookies.get(CHALLENGE_COOKIE)?.value);
       result = await signIn(username, password);
     }
     if ("challenge" in result) {
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
       return response;
     }
     const session = await createSession(result.tokens);
-    removeRecord(request.cookies.get(SESSION_COOKIE)?.value);
+    await removeRecord(request.cookies.get(SESSION_COOKIE)?.value);
     const response = json({ redirect: "/" });
     for (const name of [...AUTH_COOKIES, SIGNED_OUT_COOKIE])
       response.cookies.set(name, "", cookieOptions(0));
