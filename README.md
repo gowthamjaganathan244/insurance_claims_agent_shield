@@ -43,8 +43,9 @@ Additional suites (all synthetic data, no AWS account access):
 ```sh
 AGENTSHIELD_TEST_OPERATIONS=true npx playwright test tests/operations.spec.ts tests/claim-workflows.spec.ts
 AGENTSHIELD_TEST_REMOTE_MONITORING=true npx playwright test tests/remote-monitoring.spec.ts
-# Lambda unit tests (need boto3) and real handlers against simulated AWS (need moto)
-for d in claims-api operations-api monitoring-api; do (cd backend/$d && python -m unittest discover -s tests); done
+AGENTSHIELD_TEST_REDIS=true npx playwright test   # same suites on the Redis session store
+# Lambda tests (need boto3; malware-processor needs moto) and real handlers against simulated AWS
+for d in claims-api operations-api monitoring-api malware-processor; do (cd backend/$d && python -m unittest discover -s tests); done
 pip install "moto[dynamodb,s3,cloudwatch]" && (cd backend/integration-tests && python -m unittest -v test_integration)
 ```
 
@@ -72,7 +73,7 @@ TypeScript 6 is intentional: the installed Next.js lint stack does not yet suppo
 
 - `lib/live-claims.ts`, `lib/claims-api.ts`: live claim contract and authenticated server boundary.
 - `lib/documents-api.ts`, `lib/operations-api.ts`, `lib/monitoring/`: server-side clients for the staging APIs, with strict response validation.
-- `backend/`: Lambda sources (`claims-api`, `operations-api`, `monitoring-api`), their tests, `integration-tests/` (moto) and `staging/` (CloudFormation generator, packaging, change-set scripts). See `docs/release-rollback.md`.
+- `backend/`: Lambda sources (`claims-api`, `operations-api`, `monitoring-api`, `malware-processor`), their tests, `integration-tests/` (moto) and `staging/` (CloudFormation generator, packaging, change-set scripts). See `docs/release-rollback.md`.
 - `app/(protected)/`: server-authenticated operational pages, at their original URLs.
 - `lib/auth/`: Cognito SDK, JWT verification, encrypted sessions and CSRF controls.
 - `components/`: reusable React interaction and presentation components.
@@ -81,42 +82,32 @@ TypeScript 6 is intentional: the installed Next.js lint stack does not yet suppo
 
 ## Data boundary
 
-The Claims list and UUID claim detail routes now call the existing AWS claims API
-through session-verified Next.js handlers. They have no demonstration fallback.
-Only owner-matching records are projected into the browser; historical unowned
-records are excluded. Description editing and cancellation use the supported
-PATCH/DELETE contracts. The creation form requires explicit acknowledgement of the
-existing SES confirmation-email side effect. Document upload uses signed S3 POST
-and the existing completion handler; neither scan completion nor delivery is assumed.
+Every page reads live AWS through session-verified Next.js route handlers; the
+browser never calls AWS directly and the server needs no AWS access keys (it
+forwards the signed-in user's Cognito token to API Gateway JWT authorizers).
 
-Command keeps first-page recent claims and follows up to 10 pages for distinct
-claim/status counts, with a 30-second deadline and explicit partial-result labels.
-It does not claim account-wide totals or fabricate workflow stages.
-Reliability and navbar monitoring use an authenticated, explicitly allowlisted
-CloudWatch endpoint. Temporary server AWS credentials are required; live verification
-is pending. See [monitoring setup and IAM proposal](docs/reliability-live-monitoring.md).
-Security reads the optional owner-authorised document endpoint. Communications,
-assessments, approvals and non-transfer payment records use a separate optional
-operations backend. Both show errors/unavailable states until deployed and configured.
-The new operations backend is packaged locally; real email is disabled by default. No demo provider or fictional operational
-record is mounted on live routes. Historical fixture/reference files remain in the
-repository but are not a runtime fallback. Missing monitoring shows Health unavailable.
-See [truthful live screens](docs/live-data-phase1.md) for the source inventory and next gates.
+- Claims (list, detail, create, edit, cancel, uploads): production Claims API.
+- Security documents, operations workflows, template versions and monitoring:
+  staging stack `agentshield-task11-stage` (`OPERATIONS_API_ORIGIN`,
+  `DOCUMENTS_READ_API_ORIGIN`, `MONITORING_API_ORIGIN`).
+- Uploads use signed S3 POST; GuardDuty scans each object and
+  `backend/malware-processor` records the result (clean, blocked or quarantined).
+- Only owner-matching records reach the browser. Nothing is fabricated: missing
+  metrics are never shown as zero, email acceptance is never shown as delivery, and
+  payments are recorded workflow events, not money transfers.
+- Email sending/delivery tracking is out of demo scope (staging `EnableEmail=false`,
+  SES sandbox). Template approval is recorded only; SES is never modified.
 
-See [current local functionality and live blockers](docs/task11-functional-implementation.md)
-and the [isolated staging candidate](backend/staging/README.md).
-For optional workflow browser tests, run
-`AGENTSHIELD_TEST_OPERATIONS=true npm run test:e2e -- tests/operations.spec.ts`.
-See [historical Phase 1 implementation and verification](docs/phase1-claims-implementation.md).
-Live API success, DynamoDB ID comparison and second-user isolation must be
-recorded separately from automated contract-fixture tests.
+Live evidence, investigations, security review, costs and the 12-task tracker:
+[final status](docs/final-status.md).
 
 ## Deployment
 
-The app requires a Node.js Next.js server, server-only environment configuration,
-and a private persistent session store. It is not a static export. Local SQLite
-must be replaced with a shared session adapter before multi-host or ephemeral
-serverless deployment. Review the [authentication deployment constraints](docs/authentication.md)
-before selecting a host. The prior Sites/Cloudflare runtime is not used.
+Needs a Node.js Next.js server (not a static export). Sessions are encrypted and
+stored in SQLite on a private disk by default, or in Redis over HTTPS when
+`UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN` (or Vercel's `KV_REST_API_*`)
+are set. Free HTTPS hosting on Vercel + Upstash: [hosting guide](docs/hosting.md).
+AWS changes are reviewed CloudFormation change sets with prepared rollbacks:
+[release and rollback](docs/release-rollback.md).
 
 See [architecture](docs/architecture.md), [verification](docs/verification.md) and [reference mapping](docs/reference-mapping.md).
