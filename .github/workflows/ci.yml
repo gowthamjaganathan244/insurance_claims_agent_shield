@@ -59,6 +59,9 @@ jobs:
       - name: Real Lambda handlers against simulated AWS (synthetic data)
         run: python -m unittest -v test_integration
         working-directory: backend/integration-tests
+      - name: Deployed malware processor against simulated AWS
+        run: python -m unittest discover -s tests -v
+        working-directory: backend/malware-processor
   infrastructure:
     runs-on: ubuntu-latest
     timeout-minutes: 10
