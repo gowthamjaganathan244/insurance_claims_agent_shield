@@ -73,7 +73,7 @@ TypeScript 6 is intentional: the installed Next.js lint stack does not yet suppo
 
 - `lib/live-claims.ts`, `lib/claims-api.ts`: live claim contract and authenticated server boundary.
 - `lib/documents-api.ts`, `lib/operations-api.ts`, `lib/monitoring/`: server-side clients for the staging APIs, with strict response validation.
-- `backend/`: Lambda sources (`claims-api`, `operations-api`, `monitoring-api`, `malware-processor`), their tests, `integration-tests/` (moto) and `staging/` (CloudFormation generator, packaging, change-set scripts). See `docs/release-rollback.md`.
+- `backend/`: Lambda sources (`claims-api`, `operations-api`, `monitoring-api`), their tests, `integration-tests/` (moto) and `staging/` (CloudFormation generator, packaging, change-set scripts). See `docs/release-rollback.md`.
 - `app/(protected)/`: server-authenticated operational pages, at their original URLs.
 - `lib/auth/`: Cognito SDK, JWT verification, encrypted sessions and CSRF controls.
 - `components/`: reusable React interaction and presentation components.
@@ -82,24 +82,35 @@ TypeScript 6 is intentional: the installed Next.js lint stack does not yet suppo
 
 ## Data boundary
 
-Every page reads live AWS through session-verified Next.js route handlers; the
-browser never calls AWS directly and the server needs no AWS access keys (it
-forwards the signed-in user's Cognito token to API Gateway JWT authorizers).
+The Claims list and UUID claim detail routes now call the existing AWS claims API
+through session-verified Next.js handlers. They have no demonstration fallback.
+Only owner-matching records are projected into the browser; historical unowned
+records are excluded. Description editing and cancellation use the supported
+PATCH/DELETE contracts. The creation form requires explicit acknowledgement of the
+existing SES confirmation-email side effect. Document upload uses signed S3 POST
+and the existing completion handler; neither scan completion nor delivery is assumed.
 
-- Claims (list, detail, create, edit, cancel, uploads): production Claims API.
-- Security documents, operations workflows, template versions and monitoring:
-  staging stack `agentshield-task11-stage` (`OPERATIONS_API_ORIGIN`,
-  `DOCUMENTS_READ_API_ORIGIN`, `MONITORING_API_ORIGIN`).
-- Uploads use signed S3 POST; GuardDuty scans each object and
-  `backend/malware-processor` records the result (clean, blocked or quarantined).
-- Only owner-matching records reach the browser. Nothing is fabricated: missing
-  metrics are never shown as zero, email acceptance is never shown as delivery, and
-  payments are recorded workflow events, not money transfers.
-- Email sending/delivery tracking is out of demo scope (staging `EnableEmail=false`,
-  SES sandbox). Template approval is recorded only; SES is never modified.
+Command keeps first-page recent claims and follows up to 10 pages for distinct
+claim/status counts, with a 30-second deadline and explicit partial-result labels.
+It does not claim account-wide totals or fabricate workflow stages.
+Reliability and navbar monitoring use an authenticated, explicitly allowlisted
+CloudWatch endpoint. Temporary server AWS credentials are required; live verification
+is pending. See [monitoring setup and IAM proposal](docs/reliability-live-monitoring.md).
+Security reads the optional owner-authorised document endpoint. Communications,
+assessments, approvals and non-transfer payment records use a separate optional
+operations backend. Both show errors/unavailable states until deployed and configured.
+The new operations backend is packaged locally; real email is disabled by default. No demo provider or fictional operational
+record is mounted on live routes. Historical fixture/reference files remain in the
+repository but are not a runtime fallback. Missing monitoring shows Health unavailable.
+See [truthful live screens](docs/live-data-phase1.md) for the source inventory and next gates.
 
-Live evidence, investigations, security review, costs and the 12-task tracker:
-[final status](docs/final-status.md).
+See [current local functionality and live blockers](docs/task11-functional-implementation.md)
+and the [isolated staging candidate](backend/staging/README.md).
+For optional workflow browser tests, run
+`AGENTSHIELD_TEST_OPERATIONS=true npm run test:e2e -- tests/operations.spec.ts`.
+See [historical Phase 1 implementation and verification](docs/phase1-claims-implementation.md).
+Live API success, DynamoDB ID comparison and second-user isolation must be
+recorded separately from automated contract-fixture tests.
 
 ## Deployment
 
