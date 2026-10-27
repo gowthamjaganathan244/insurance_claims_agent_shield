@@ -43,8 +43,9 @@ Additional suites (all synthetic data, no AWS account access):
 ```sh
 AGENTSHIELD_TEST_OPERATIONS=true npx playwright test tests/operations.spec.ts tests/claim-workflows.spec.ts
 AGENTSHIELD_TEST_REMOTE_MONITORING=true npx playwright test tests/remote-monitoring.spec.ts
-# Lambda unit tests (need boto3) and real handlers against simulated AWS (need moto)
-for d in claims-api operations-api monitoring-api; do (cd backend/$d && python -m unittest discover -s tests); done
+AGENTSHIELD_TEST_REDIS=true npx playwright test   # same suites on the Redis session store
+# Lambda tests (need boto3; malware-processor needs moto) and real handlers against simulated AWS
+for d in claims-api operations-api monitoring-api malware-processor; do (cd backend/$d && python -m unittest discover -s tests); done
 pip install "moto[dynamodb,s3,cloudwatch]" && (cd backend/integration-tests && python -m unittest -v test_integration)
 ```
 
@@ -113,10 +114,11 @@ recorded separately from automated contract-fixture tests.
 
 ## Deployment
 
-The app requires a Node.js Next.js server, server-only environment configuration,
-and a private persistent session store. It is not a static export. Local SQLite
-must be replaced with a shared session adapter before multi-host or ephemeral
-serverless deployment. Review the [authentication deployment constraints](docs/authentication.md)
-before selecting a host. The prior Sites/Cloudflare runtime is not used.
+Needs a Node.js Next.js server (not a static export). Sessions are encrypted and
+stored in SQLite on a private disk by default, or in Redis over HTTPS when
+`UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN` (or Vercel's `KV_REST_API_*`)
+are set. Free HTTPS hosting on Vercel + Upstash: [hosting guide](docs/hosting.md).
+AWS changes are reviewed CloudFormation change sets with prepared rollbacks:
+[release and rollback](docs/release-rollback.md).
 
 See [architecture](docs/architecture.md), [verification](docs/verification.md) and [reference mapping](docs/reference-mapping.md).
