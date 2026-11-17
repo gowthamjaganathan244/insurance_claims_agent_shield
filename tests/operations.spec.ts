@@ -88,6 +88,12 @@ test("communications reads stored template safely and never invents delivery", a
   await expect(page.getByRole("tabpanel")).toContainText(
     "Stored test contract",
   );
+  await expect(
+    page.getByRole("button", { name: /AgentShieldClaimCreated/ }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator(".radio-unresolved")).toContainText(
+    "not customer data",
+  );
   expect(await page.evaluate(() => "templateExecuted" in window)).toBe(false);
   await page.getByRole("tab", { name: "Variables", exact: true }).click();
   await expect(page.getByRole("tabpanel")).toContainText("{{claimId}}");

@@ -57,7 +57,17 @@ export function Communications({ connected = false }: { connected?: boolean }) {
 function UnavailableCommunications() {
   const [tab, setTab] = useState(0);
   return (
-    <div className="comm-card">
+    <div className="comm-card radio-unavailable">
+      <div className="radio-disabled">
+        <span aria-hidden="true">○</span>
+        <div>
+          <strong>Sending disabled</strong>
+          <p>
+            Template and delivery services are not connected on this server. No
+            messages can be sent here.
+          </p>
+        </div>
+      </div>
       <div className="comm-bar">
         <p className="dim sm" role="status">
           Email templates: not connected. No template content has been loaded.
@@ -118,6 +128,7 @@ function UnavailableCommunications() {
 
 function LiveCommunications() {
   const [tab, setTab] = useState(0);
+  const [selectedTemplate, setSelectedTemplate] = useState("");
   const [cursor, setCursor] = useState<string | null>(null);
   const [selected, setSelected] = useState("");
   const templates = useLiveClaims<{
@@ -129,7 +140,9 @@ function LiveCommunications() {
     undefined,
     60000,
   );
-  const template = templates.data?.templates[0];
+  const template =
+    templates.data?.templates.find((item) => item.name === selectedTemplate) ??
+    templates.data?.templates[0];
   const claimId = claims.data?.claims.some((c) => c.claimId === selected)
     ? selected
     : claims.data?.claims[0]?.claimId;
@@ -143,7 +156,30 @@ function LiveCommunications() {
       ]
     : [];
   return (
-    <>
+    <div className="radio-layout">
+      <aside className="radio-library" aria-label="Message library">
+        <p className="radio-index">01 / MESSAGE LIBRARY</p>
+        <h2>Stored templates</h2>
+        <p>Choose a template to inspect its current SES content.</p>
+        {templates.loading && !templates.data && (
+          <p role="status">Loading templates…</p>
+        )}
+        {templates.data && !templates.data.templates.length && (
+          <p>No stored templates returned.</p>
+        )}
+        {templates.data?.templates.map((item) => (
+          <button
+            type="button"
+            key={item.name}
+            className="radio-template"
+            aria-pressed={template?.name === item.name}
+            onClick={() => setSelectedTemplate(item.name)}
+          >
+            <strong>{item.name}</strong>
+            <small>{item.subject}</small>
+          </button>
+        ))}
+      </aside>
       <div className="comm-bar">
         <p className="dim sm" role="status">
           {template ? (
@@ -171,7 +207,12 @@ function LiveCommunications() {
         </button>
       </div>
       {templates.error && <Alert tone="bad">{templates.error}</Alert>}
-      <div className="comm-card">
+      <div className="comm-card radio-studio">
+        <div className="radio-studio-heading">
+          <p className="radio-index">02 / MESSAGE STUDIO</p>
+          <h2>Content inspection</h2>
+          <span>Stored text preview · unresolved variables remain visible</span>
+        </div>
         <div className="glass lq">
           <Tabs
             label="Email data availability"
@@ -189,12 +230,29 @@ function LiveCommunications() {
             {tab === 0 &&
               (template ? (
                 <>
-                  <h3>{template.subject}</h3>
-                  <pre
-                    style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}
-                  >
-                    {template.text || template.html}
-                  </pre>
+                  <div className="radio-message-frame">
+                    <div className="radio-message-top">
+                      <span>AGENTSHIELD / CUSTOMER MESSAGE</span>
+                      <span>PREVIEW ONLY</span>
+                    </div>
+                    <p className="radio-message-label">SUBJECT</p>
+                    <h3>{template.subject}</h3>
+                    <p className="radio-message-label">BODY</p>
+                    <pre
+                      style={{
+                        whiteSpace: "pre-wrap",
+                        overflowWrap: "anywhere",
+                      }}
+                    >
+                      {template.text || template.html}
+                    </pre>
+                  </div>
+                  {variables.length > 0 && (
+                    <p className="radio-unresolved">
+                      Unresolved template variables: {variables.join(", ")}.
+                      These are placeholders, not customer data.
+                    </p>
+                  )}
                   <p className="dim">
                     Stored SES content, shown as text. Template HTML is never
                     executed.
@@ -245,7 +303,8 @@ function LiveCommunications() {
           </Tabs>
         </div>
       </div>
-      <section className="sec">
+      <section className="sec radio-history">
+        <p className="radio-index">03 / RADIO HISTORY</p>
         <h2>Claim email activity</h2>
         <p className="dim">
           Persisted send attempts and SES provider events for one of your
@@ -301,6 +360,6 @@ function LiveCommunications() {
           <ClaimOperations key={claimId} claimId={claimId} communicationsOnly />
         )}
       </section>
-    </>
+    </div>
   );
 }

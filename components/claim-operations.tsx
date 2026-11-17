@@ -62,6 +62,7 @@ export function ClaimOperations({
 }) {
   const mode: OperationsView = communicationsOnly ? "email" : view;
   const [cursor, setCursor] = useState<string | null>(null);
+  const [eventQuery, setEventQuery] = useState("");
   const { data, error, loading, updated, refresh } =
     useLiveClaims<OperationData>(
       `/api/claims/${claimId}/operations${cursor ? `?nextToken=${encodeURIComponent(cursor)}` : ""}`,
@@ -77,6 +78,14 @@ export function ClaimOperations({
   const [pending, setPending] = useState(false),
     [message, setMessage] = useState("");
   const events = data?.events.filter((item) => viewEvents[mode](item.action));
+  const visibleEvents =
+    mode === "email" && eventQuery.trim()
+      ? events?.filter((item) =>
+          `${item.action} ${item.createdAt} ${JSON.stringify(item.details)}`
+            .toLowerCase()
+            .includes(eventQuery.trim().toLowerCase()),
+        )
+      : events;
   return (
     <div className="ops">
       <div className="ops-bar">
@@ -296,11 +305,26 @@ export function ClaimOperations({
                 ? "Audit history"
                 : "History"}
           </h3>
-          {!events?.length && (
-            <p className="dim">No recorded events on this page.</p>
+          {mode === "email" && (
+            <label className="radio-event-search">
+              Search events on this page
+              <input
+                type="search"
+                value={eventQuery}
+                onChange={(event) => setEventQuery(event.target.value)}
+                placeholder="Status, event or note"
+              />
+            </label>
+          )}
+          {!visibleEvents?.length && (
+            <p className="dim">
+              {eventQuery.trim() && events?.length
+                ? "No events on this page match your search."
+                : "No recorded events on this page."}
+            </p>
           )}
           <ol className="timeline">
-            {events?.map((item) => (
+            {visibleEvents?.map((item) => (
               <li key={item.eventId}>
                 <b>{actionLabels[item.action] ?? item.action}</b>{" "}
                 <ClaimTime value={item.createdAt} />
