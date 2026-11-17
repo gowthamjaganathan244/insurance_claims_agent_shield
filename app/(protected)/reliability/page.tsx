@@ -6,7 +6,10 @@ export default async function ReliabilityPage() {
   await requireSession();
   return (
     <main id="app" tabIndex={-1}>
-      <PageHeading eyebrow="TELEMETRY / SERVICE HEALTH" title="Reliability">
+      <PageHeading
+        eyebrow="04 / TELEMETRY CENTRE"
+        title="Reliability telemetry"
+      >
         CloudWatch alarms and API and Lambda measurements for the claims
         service. Missing data is never treated as healthy.
       </PageHeading>

@@ -58,6 +58,20 @@ test("authorized Reliability and navbar consume the monitoring endpoint", async 
       .getByRole("img", { name: /API average latency: observed/ })
       .locator("circle"),
   ).toHaveCount(1);
+  await page
+    .locator(".ch button")
+    .filter({ hasText: "API average latency" })
+    .click();
+  await expect(page.locator(".telemetry-inspector")).toContainText(
+    "Average API Gateway latency",
+  );
+  await expect(page.locator(".telemetry-inspector")).toContainText(
+    "5-minute periods",
+  );
+  await page.getByLabel("View range").selectOption("30");
+  await expect(page.locator(".telemetry-inspector")).toContainText(
+    "one-hour query",
+  );
   await page.getByRole("button", { name: "Refresh monitoring" }).click();
   await expect(
     page.getByRole("button", { name: "Refresh monitoring" }),
