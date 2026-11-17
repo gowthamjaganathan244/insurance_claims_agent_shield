@@ -3,6 +3,7 @@ import Link from "next/link";
 import { HealthDot, MonitoringHealth } from "./monitoring-provider";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { CommandPalette } from "./command-palette";
 const links = [
   ["/", "Overview"],
   ["/claims", "Claims"],
@@ -150,6 +151,7 @@ function Island({
           <MonitoringHealth />
         </div>
       </div>
+      <CommandPalette />
     </header>
   );
 }

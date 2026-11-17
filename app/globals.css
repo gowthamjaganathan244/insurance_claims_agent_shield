@@ -3659,3 +3659,139 @@ h2 {
     width: 100%;
   }
 }
+
+/* Fast navigation stays within the signed-in shell and reads owned claim records. */
+.command-trigger {
+  pointer-events: auto;
+  position: absolute;
+  right: clamp(12px, 3vw, 32px);
+  top: 16px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 40px;
+  padding: 7px 11px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #16191e;
+  color: var(--fg);
+  font-size: 13px;
+}
+.command-trigger:hover {
+  border-color: #e53945;
+}
+.command-trigger kbd {
+  color: var(--mut);
+  font: inherit;
+  font-size: 11px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 1px 4px;
+}
+.command-dialog {
+  position: fixed;
+  inset: 0;
+  margin: min(15vh, 110px) auto auto;
+  width: min(620px, calc(100vw - 24px));
+  max-height: min(70vh, 620px);
+  padding: 0;
+  overflow: auto;
+  border: 1px solid #49515b;
+  border-radius: 12px;
+  background: #16191e;
+  color: var(--fg);
+  box-shadow: 0 35px 90px #000b;
+}
+.command-dialog::backdrop {
+  background: #030507ad;
+  backdrop-filter: blur(3px);
+}
+.command-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px;
+  border-bottom: 1px solid var(--line);
+}
+.command-head input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-size: 16px;
+}
+.command-close {
+  padding: 5px 9px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: #22272d;
+  font-size: 12px;
+}
+.command-results {
+  max-height: min(48vh, 420px);
+  overflow: auto;
+  padding: 7px;
+}
+.command-results > p {
+  margin: 8px 10px;
+  color: var(--mut);
+  font-size: 12px;
+}
+.command-results a {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 13px;
+  border-radius: 7px;
+}
+.command-results a:hover,
+.command-results a.selected {
+  background: #292f36;
+}
+.command-results strong,
+.command-results small {
+  display: block;
+}
+.command-results strong {
+  font-size: 14px;
+}
+.command-results small {
+  color: var(--mut);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.command-results em {
+  color: #d6a4a8;
+  font-size: 11px;
+  font-style: normal;
+  white-space: nowrap;
+}
+.command-foot {
+  margin: 0;
+  padding: 9px 17px;
+  border-top: 1px solid var(--line);
+  color: var(--mut);
+  font-size: 11px;
+}
+@media (max-width: 1100px) {
+  .command-trigger {
+    right: 12px;
+  }
+  .command-trigger kbd {
+    display: none;
+  }
+}
+@media (max-width: 760px) {
+  .command-trigger {
+    min-width: 42px;
+    justify-content: center;
+  }
+  .command-trigger span:nth-child(2) {
+    display: none;
+  }
+}
