@@ -65,7 +65,8 @@ export function CommandClaims({
     <>
       <section className="hero overview-head">
         <PageHeading
-          title="Overview"
+          eyebrow="01 / PIT WALL"
+          title="Claims in focus."
           actions={
             <>
               <button
@@ -81,8 +82,7 @@ export function CommandClaims({
             </>
           }
         >
-          Your claims, monitored alarms and the AgentShield workflows, from live
-          records only.
+          A clear view of your claims and the services supporting them.
         </PageHeading>
         <div aria-label="Recorded claim status counts" aria-busy={loading}>
           <Kpis

@@ -100,7 +100,7 @@ function Island({
             aria-hidden="true"
           >
             <path d="M12 2.5 4 6v6c0 4.6 3.2 8.2 8 9.5 4.8-1.3 8-4.9 8-9.5V6l-8-3.5Z" />
-            <path d="m8.5 12 2.5 2.5 4.5-5" stroke="#73dba4" />
+            <path d="m8.5 12 2.5 2.5 4.5-5" stroke="#E53945" />
           </svg>
           <b className="bn">
             AgentShield <small>AU</small>

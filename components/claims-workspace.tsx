@@ -32,6 +32,7 @@ export function ClaimsWorkspace() {
   return (
     <>
       <PageHeading
+        eyebrow="02 / STARTING GRID"
         title="Claims"
         actions={
           <>

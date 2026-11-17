@@ -4,14 +4,17 @@ export function PageHeading({
   title,
   children,
   actions,
+  eyebrow,
 }: {
   title: string;
   children?: ReactNode;
   actions?: ReactNode;
+  eyebrow?: string;
 }) {
   return (
     <div className="sec-h page-head">
       <div>
+        {eyebrow && <div className="page-eyebrow">{eyebrow}</div>}
         <h1 className="pg">{title}</h1>
         {children && <p className="lede">{children}</p>}
       </div>

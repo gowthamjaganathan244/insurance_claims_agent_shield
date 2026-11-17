@@ -3310,3 +3310,78 @@ h2 {
   justify-self: start;
   margin-top: 6px;
 }
+
+/* AgentShield pit lane: matte surfaces, measured signals and clear hierarchy. */
+:root {
+  --bg: #0b0d10;
+  --fg: #f5f6f4;
+  --mut: #aab2bc;
+  --line: rgba(194, 205, 216, .15);
+  --glass: #16191e;
+  --acc: #e85b65;
+  --ok: #66d6a0;
+  --warn: #ffbd59;
+  --bad: #ff8088;
+  --field: #1c2127;
+  --solid: #16191e;
+  --island-bg: #16191e;
+  --island-edge: rgba(194, 205, 216, .18);
+}
+html, body { background: var(--bg); }
+body {
+  background: linear-gradient(155deg, #171c22 0, #0b0d10 37rem);
+  color: var(--fg);
+}
+#bg { display: none; }
+main { max-width: 1400px; }
+.page-eyebrow {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 16px;
+  color: #d6a4a8; font-size: 11px; font-weight: 700; letter-spacing: .16em;
+}
+.page-eyebrow::before { content: ''; width: 25px; height: 3px; background: #e53945; transform: skewX(-25deg); }
+.pg { font-size: clamp(38px, 5vw, 66px); font-weight: 600; letter-spacing: -.055em; }
+h2 { font-weight: 600; letter-spacing: -.035em; }
+.lede { line-height: 1.6; max-width: 46em; }
+.isl { border-radius: 12px; box-shadow: 0 12px 35px #0006; backdrop-filter: none; }
+.isl nav a, .isl .cw b { border-radius: 7px; }
+.isl nav a[aria-current="page"] { background: #282d34; box-shadow: inset 0 -2px #e53945; }
+.isl .brand svg path:last-child { stroke: #e53945; }
+.kpis { gap: 1px; overflow: hidden; border: 1px solid var(--line); border-radius: 10px; background: var(--line); margin-top: 30px; }
+.kpi { border: 0; border-radius: 0; background: #16191e; padding: 22px; }
+.kpi dt { font-size: 10px; font-weight: 700; letter-spacing: .12em; }
+.kpi dd { font-size: clamp(25px, 3vw, 38px); font-weight: 600; letter-spacing: -.04em; }
+.kpi small { font-size: 12px; font-weight: 400; letter-spacing: 0; }
+.pane, .card, .alert, .claims-table-wrap { background: #16191e; border-color: var(--line); box-shadow: none; }
+.card { border-radius: 9px; padding: 22px; }
+.card:hover, .card:focus-visible { border-color: #e53945; }
+.btn { border-radius: 7px; background: #22272d; border-color: #3b424b; box-shadow: none; }
+.btn:hover { background: #303740; }
+.btn.ok { background: #e53945; border-color: #e53945; color: white; box-shadow: none; }
+.btn.ok:hover { background: #bd2632; }
+.tag { border-radius: 4px; font-size: 11px; letter-spacing: .04em; }
+.tabs { border-radius: 8px; background: #16191e; }
+.tabs button[aria-selected="true"] { background: #30363e; box-shadow: inset 0 -2px #e53945; }
+.claim-journey { margin: 24px 0; padding: 20px 22px; border: 1px solid var(--line); border-radius: 10px; background: #16191e; }
+.journey-heading { display: flex; justify-content: space-between; gap: 10px; color: var(--mut); font-size: 10px; font-weight: 700; letter-spacing: .12em; }
+.claim-journey ol { display: flex; gap: 0; list-style: none; padding: 0; margin: 20px 0 12px; }
+.claim-journey li { display: flex; align-items: flex-start; gap: 10px; flex: 1; position: relative; min-width: 0; }
+.claim-journey li:not(:last-child)::after { content: ''; height: 1px; background: #454d57; position: absolute; top: 6px; left: 15px; right: 8px; }
+.claim-journey li > div { position: relative; z-index: 1; padding-right: 12px; background: #16191e; }
+.journey-marker { width: 13px; height: 13px; border: 2px solid #66d6a0; border-radius: 50%; flex: none; background: #16191e; z-index: 1; }
+.journey-marker.current { border-color: #e53945; box-shadow: inset 0 0 0 3px #16191e; background: #e53945; }
+.journey-marker.cancelled { border-color: #ffbd59; }
+.claim-journey strong, .claim-journey small { display: block; }
+.claim-journey strong { font-size: 13px; }
+.claim-journey small, .claim-journey p { color: var(--mut); font-size: 12px; }
+.claim-journey p { margin: 0; }
+:focus-visible { outline-color: #ff8790; }
+@media (max-width: 640px) {
+  .kpis { grid-template-columns: 1fr 1fr; }
+  .kpi { padding: 16px; }
+  .claim-journey ol { display: grid; gap: 18px; }
+  .claim-journey li:not(:last-child)::after { top: 14px; bottom: -18px; left: 6px; right: auto; width: 1px; height: auto; }
+  .journey-heading span:last-child { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}
