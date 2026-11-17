@@ -190,3 +190,45 @@ test("Command rejects repeating cursors", async ({ page }) => {
     "Unavailable",
   );
 });
+
+test("Pit Wall separates cancelled claims and keeps board controls scoped to recent records", async ({
+  page,
+}) => {
+  await login(page.request);
+  await page.route("**/api/claims*", (route) =>
+    route.fulfill({
+      json: {
+        claims: [
+          { ...record("one"), createdAt: "2026-10-21T00:00:00Z" },
+          {
+            ...record("two", "CANCELLED"),
+            createdAt: "2026-10-22T00:00:00Z",
+            cancelledAt: "2026-10-23T00:00:00Z",
+          },
+        ],
+        nextToken: null,
+      },
+    }),
+  );
+  await page.goto("/");
+  await expect(page.locator(".pit-lane-row")).toHaveCount(2);
+  await expect(page.locator(".pit-lane-row.is-terminal")).toContainText(
+    "CANCELLED",
+  );
+  await page.getByRole("button", { name: "POL-two Property" }).click();
+  await expect(page.locator(".pit-selection a")).toHaveAttribute(
+    "href",
+    "/claim/two",
+  );
+  const board = page.getByRole("region", { name: "Recent claims" });
+  await board
+    .getByRole("searchbox", { name: "Search recent claims" })
+    .fill("POL-two");
+  await expect(board.locator(".queue .row")).toHaveCount(1);
+  await expect(board.locator(".queue .row")).toContainText("CANCELLED");
+  await board.getByRole("searchbox", { name: "Search recent claims" }).fill("");
+  await board.getByLabel("Sort").selectOption("oldest");
+  await expect(board.locator(".queue .row").first()).toContainText("POL-one");
+  await page.locator(".pit-events details").first().locator("summary").click();
+  await expect(page.locator(".pit-event-detail").first()).toContainText("two");
+});
