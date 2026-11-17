@@ -19,6 +19,18 @@ type DocumentRecord = {
   quarantineCopyVerified?: boolean;
   sourceIsolationPending?: boolean;
 };
+const scanTone = (doc: DocumentRecord) => {
+  if (doc.scanStatus === "NO_THREATS_FOUND" && doc.status === "SCAN_CLEAN")
+    return "ok";
+  if (
+    doc.scanStatus === "THREATS_FOUND" ||
+    doc.scanStatus === "FAILED" ||
+    doc.status === "SCAN_BLOCKED"
+  )
+    return "bad";
+  if (doc.scanStatus === "SKIPPED") return "warn";
+  return "mut";
+};
 export function ClaimDocuments({
   claimId,
   canUpload = false,
@@ -210,9 +222,7 @@ export function ClaimDocuments({
               {doc.fileName ?? doc.documentId}
               <small>{doc.status}</small>
             </span>
-            <span
-              className={`inspection-scan ${doc.scanStatus === "NO_THREATS_FOUND" ? "ok" : doc.scanStatus === "THREATS_FOUND" ? "bad" : doc.scanStatus === "PENDING" ? "mut" : "warn"}`}
-            >
+            <span className={`inspection-scan ${scanTone(doc)}`}>
               {doc.scanStatus}
             </span>
           </summary>

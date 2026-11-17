@@ -245,10 +245,14 @@ export function ReliabilityMonitoring() {
                   <ClaimTime value={data.end} /> · {data.periodSeconds / 60}
                   -minute periods from the one-hour query.
                 </p>
-                <MonitoringChart
-                  metric={inspected}
-                  period={data.periodSeconds}
-                />
+                {inspected.points.length ? (
+                  <MonitoringChart
+                    metric={inspected}
+                    period={data.periodSeconds}
+                  />
+                ) : (
+                  <p>No returned samples in this view range.</p>
+                )}
               </div>
             )}
           </section>

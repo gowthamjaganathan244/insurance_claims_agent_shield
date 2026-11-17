@@ -72,6 +72,53 @@ test("document service missing or invalid never falls back to sample incidents",
     );
   }
 });
+test("inspection distinguishes clean, threat and unknown document states", async ({
+  page,
+}) => {
+  await login(page.request);
+  const claimId = "11111111-1111-4111-8111-111111111111";
+  await page.route(`**/api/claims/${claimId}/documents`, (route) =>
+    route.fulfill({
+      json: {
+        documents: [
+          {
+            documentId: "a".repeat(32),
+            claimId,
+            fileName: "clean.pdf",
+            status: "SCAN_CLEAN",
+            scanStatus: "NO_THREATS_FOUND",
+          },
+          {
+            documentId: "b".repeat(32),
+            claimId,
+            fileName: "threat.pdf",
+            status: "QUARANTINE_REQUIRED",
+            scanStatus: "THREATS_FOUND",
+          },
+          {
+            documentId: "c".repeat(32),
+            claimId,
+            fileName: "pending.pdf",
+            status: "PENDING_SCAN",
+            scanStatus: "PENDING",
+          },
+        ],
+        nextToken: null,
+      },
+    }),
+  );
+  await page.goto("/security");
+  await expect(page.locator(".inspection-record")).toHaveCount(3);
+  await expect(
+    page.locator(".inspection-record").nth(0).locator(".inspection-scan"),
+  ).toHaveClass(/ok/);
+  await expect(
+    page.locator(".inspection-record").nth(1).locator(".inspection-scan"),
+  ).toHaveClass(/bad/);
+  await expect(
+    page.locator(".inspection-record").nth(2).locator(".inspection-scan"),
+  ).toHaveClass(/mut/);
+});
 test("signed upload completes and shows recorded pending scan, never clean or isolated", async ({
   page,
 }) => {
