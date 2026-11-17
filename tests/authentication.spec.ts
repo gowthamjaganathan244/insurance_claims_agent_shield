@@ -56,6 +56,65 @@ test("login form validates, toggles password, and reports invalid credentials sa
   await expect(page.getByLabel("Password", { exact: true })).toHaveValue("");
 });
 
+test("paddock access waits for the authentication response before reporting failure", async ({
+  page,
+}) => {
+  await page.goto("/login");
+  await page.getByLabel("Email or username").fill(testUser());
+  await page.getByLabel("Password", { exact: true }).fill("incorrect-password");
+  let releaseResponse!: () => void;
+  const responseGate = new Promise<void>((resolve) => {
+    releaseResponse = resolve;
+  });
+  await page.route("**/api/auth/login", async (route) => {
+    await responseGate;
+    await route.fulfill({
+      status: 400,
+      contentType: "application/json",
+      body: JSON.stringify({ error: "Sign-in could not be verified." }),
+    });
+  });
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText(
+    "Authenticating with Amazon Cognito",
+  );
+  await expect(
+    page.getByRole("button", { name: "Please wait…" }),
+  ).toBeDisabled();
+  await expect(page).toHaveURL(/\/login$/);
+  releaseResponse();
+  await expect(page.locator("#auth-error")).toContainText(
+    "Sign-in could not be verified",
+  );
+  await expect(page.getByRole("status")).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Sign in", exact: true }),
+  ).toBeEnabled();
+});
+
+test("paddock access fits narrow screens and keeps recovery reachable by keyboard", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.goto("/login");
+  await expect(page.getByText("PRECISION IN")).toBeVisible();
+  await expect(page.getByLabel("Email or username")).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.getByRole("button", { name: "Forgot password?" }).focus();
+  await page.keyboard.press("Enter");
+  await expect(
+    page.getByRole("heading", { name: "Forgot password" }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Email or username")).toHaveAttribute(
+    "autocomplete",
+    "username",
+  );
+});
+
 test("verified sign-in survives refresh and login redirects without exposing tokens", async ({
   page,
   context,

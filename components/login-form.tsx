@@ -261,8 +261,17 @@ export function LoginForm() {
           </div>
         )}
         <button className="btn ok auth-submit" type="submit">
-          {busy ? "Please wait…" : label}
+          <span>{busy ? "Please wait…" : label}</span>
+          <span className="auth-submit-arrow" aria-hidden="true">
+            ↗
+          </span>
         </button>
+        {busy && mode === "login" && (
+          <div className="auth-progress" role="status">
+            <span className="auth-progress-track" aria-hidden="true" />
+            Authenticating with Amazon Cognito…
+          </div>
+        )}
         {mode === "login" ? (
           <button
             className="auth-text-button"
