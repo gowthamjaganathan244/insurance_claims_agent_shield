@@ -4,6 +4,7 @@ import { currentSession } from "@/lib/auth/session";
 import { SIGNED_OUT_COOKIE } from "@/lib/auth/config";
 import { AuthShell } from "@/components/auth-shell";
 import { LoginForm } from "@/components/login-form";
+import "./paddock.css";
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Sign in" };
 export default async function LoginPage() {
@@ -12,7 +13,8 @@ export default async function LoginPage() {
   return (
     <AuthShell
       title="Welcome back"
-      description="Sign in to your AgentShield workspace."
+      description="Enter your secure operations workspace."
+      paddock
     >
       {signedOut && (
         <p role="status" className="auth-notice">

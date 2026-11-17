@@ -1,0 +1,641 @@
+/* Paddock Access is scoped to /login; the shared logout shell retains its layout. */
+.paddock-access {
+  --paddock-black: #0b0d10;
+  --paddock-graphite: #171b20;
+  --paddock-titanium: #242a31;
+  --paddock-red: #e54852;
+  --paddock-white: #f5f5f3;
+  --paddock-silver: #aab3bd;
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: minmax(0, 1.17fr) minmax(460px, 0.83fr);
+  gap: 0;
+  align-items: stretch;
+  align-content: stretch;
+  width: 100%;
+  max-width: none;
+  min-height: 100svh;
+  margin: 0;
+  padding: 0;
+  background: var(--paddock-black);
+  color: var(--paddock-white);
+  animation: none;
+}
+.paddock-access::before {
+  position: absolute;
+  inset: 0 0 0 57%;
+  z-index: -1;
+  content: "";
+  background:
+    radial-gradient(ellipse at 68% 44%, #29313a 0, transparent 42%),
+    linear-gradient(140deg, #1b2026, #11151a 62%, #0b0d10);
+}
+.paddock-access .auth-intro {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 0;
+  min-height: min(920px, 100svh);
+  overflow: hidden;
+  padding: clamp(30px, 3.9vw, 66px) clamp(32px, 5vw, 82px) 64px;
+  border-right: 1px solid #626c761f;
+  background:
+    linear-gradient(90deg, #0b0d10f5 0%, #0b0d10c7 39%, #0b0d1066 100%),
+    radial-gradient(ellipse at 88% 44%, #8030394d, transparent 39%), #11151a;
+}
+.paddock-access .auth-intro::before {
+  position: absolute;
+  inset: 0;
+  content: "";
+  pointer-events: none;
+  opacity: 0.55;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent 0,
+    transparent 79px,
+    #aab3bd12 80px,
+    transparent 81px
+  );
+}
+.paddock-access .auth-intro::after {
+  position: absolute;
+  inset: auto 0 0;
+  height: 44%;
+  content: "";
+  pointer-events: none;
+  background: linear-gradient(0deg, #0b0d10 2%, #0b0d10c4 40%, transparent);
+}
+.paddock-access .auth-brand,
+.paddock-access .auth-intro-copy,
+.paddock-access .auth-assurance {
+  position: relative;
+  z-index: 2;
+}
+.paddock-access .auth-brand {
+  align-self: flex-start;
+  gap: 13px;
+  font-size: 21px;
+  font-weight: 680;
+  letter-spacing: -0.045em;
+  line-height: 1;
+}
+.paddock-access .auth-brand svg {
+  width: 34px;
+  height: 34px;
+  padding: 5px;
+  border: 1px solid #f5f5f34d;
+  border-radius: 5px;
+  color: var(--paddock-white);
+}
+.paddock-access .auth-brand small {
+  margin-left: 1px;
+  color: var(--paddock-silver);
+  font-size: 12px;
+  font-weight: 550;
+  letter-spacing: 0.12em;
+}
+.paddock-access .auth-shield-check {
+  stroke: var(--paddock-red);
+}
+.paddock-access .auth-intro-copy {
+  max-width: 610px;
+  margin-top: auto;
+  padding-bottom: clamp(78px, 10vh, 140px);
+}
+.paddock-access .auth-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  margin: 0 0 26px;
+  color: #f0b7ba;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+}
+.paddock-access .auth-eyebrow::before {
+  width: 19px;
+  height: 2px;
+  content: "";
+  background: var(--paddock-red);
+  box-shadow: 0 0 16px #e5485299;
+}
+.paddock-access .auth-statement {
+  margin: 0;
+  color: var(--paddock-white);
+  font-size: clamp(48px, 5.25vw, 91px);
+  font-weight: 650;
+  letter-spacing: -0.073em;
+  line-height: 0.98;
+  text-wrap: balance;
+}
+.paddock-access .auth-statement span {
+  color: #d6d9db;
+  font-weight: inherit;
+}
+.paddock-access .auth-caption {
+  max-width: 370px;
+  margin: 28px 0 0;
+  color: #c0c8d0;
+  font-size: 16px;
+  line-height: 1.6;
+}
+.paddock-access .auth-assurance {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0;
+  color: #c2cad2;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.14em;
+}
+.paddock-access .auth-assurance span:last-child {
+  margin-left: auto;
+  color: #aab3bd;
+}
+.paddock-assurance-rule {
+  width: 30px;
+  height: 1px;
+  flex: 0 0 auto;
+  background: var(--paddock-red);
+}
+.paddock-architecture {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.paddock-architecture-roof {
+  position: absolute;
+  top: 11%;
+  right: -25%;
+  width: 112%;
+  height: 42%;
+  transform: skewY(-13deg);
+  border-top: 1px solid #d9e1e967;
+  border-bottom: 3px solid #bfc8d12b;
+  background:
+    linear-gradient(125deg, #1b222971 3%, #3c485279 44%, #0d1117 77%),
+    repeating-linear-gradient(90deg, transparent 0 115px, #e7ebed17 116px 117px);
+  box-shadow:
+    0 35px 95px #000b,
+    inset 0 3px 40px #ffffff0b;
+}
+.paddock-architecture-bay {
+  position: absolute;
+  top: 28%;
+  right: -8%;
+  width: 75%;
+  height: 42%;
+  transform: skewY(-13deg);
+  border-left: 1px solid #e9f1f342;
+  background:
+    repeating-linear-gradient(90deg, #8996a41e 0 1px, transparent 1px 24%),
+    linear-gradient(180deg, #343d46af, #10151b 58%, #080b0e);
+  box-shadow:
+    inset 28px 0 50px #0b0d109c,
+    0 30px 70px #0009;
+}
+.paddock-architecture-bay::after {
+  position: absolute;
+  inset: 51% 0 auto;
+  height: 2px;
+  content: "";
+  background: linear-gradient(
+    90deg,
+    transparent,
+    #e548527a 32%,
+    #e5485252 84%,
+    transparent
+  );
+  box-shadow: 0 0 23px #e5485288;
+}
+.paddock-architecture-lane {
+  position: absolute;
+  right: -26%;
+  bottom: -19%;
+  width: 106%;
+  height: 44%;
+  transform: rotate(-17deg) skewX(-28deg);
+  border-top: 1px solid #f5f5f3b3;
+  background:
+    linear-gradient(180deg, #dfe5e81b, transparent 15%),
+    repeating-linear-gradient(0deg, transparent 0 102px, #dbe4ec20 103px 104px),
+    #151b22;
+  box-shadow: 0 -12px 60px #e548522b;
+}
+.paddock-architecture-lane::after {
+  position: absolute;
+  top: 15%;
+  left: 10%;
+  right: 8%;
+  height: 3px;
+  content: "";
+  background: linear-gradient(90deg, transparent, #e8edf0b0, #e8edf036);
+}
+.paddock-architecture-beam {
+  position: absolute;
+  top: 9%;
+  right: 14%;
+  width: 1px;
+  height: 64%;
+  transform: rotate(19deg);
+  background: linear-gradient(180deg, transparent, #e548527a, transparent);
+  box-shadow: 0 0 18px #e548525c;
+}
+.paddock-access .auth-card.glass.lq {
+  position: relative;
+  z-index: 1;
+  align-self: center;
+  justify-self: center;
+  display: block;
+  width: min(100% - 64px, 488px);
+  max-height: calc(100svh - 54px);
+  overflow-y: auto;
+  padding: clamp(28px, 3.8vw, 54px);
+  border: 1px solid #76818b4a;
+  border-radius: 11px;
+  background: linear-gradient(145deg, #22282e, #171b20 36%, #13171b);
+  box-shadow:
+    0 36px 85px #0007,
+    inset 0 1px 0 #f5f5f31a;
+  scrollbar-width: thin;
+}
+.paddock-access .auth-card::before {
+  position: absolute;
+  top: 0;
+  left: 52px;
+  width: 52px;
+  height: 2px;
+  content: "";
+  background: var(--paddock-red);
+  box-shadow: 0 0 20px #e5485259;
+}
+.paddock-console-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: clamp(48px, 7vh, 80px);
+  color: #bbc5ce;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  white-space: nowrap;
+}
+.paddock-console-top > span:last-child {
+  margin-left: auto;
+  color: #aeb9c3;
+}
+.paddock-console-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 5px 6px;
+  border: 1px solid #818d9847;
+  border-radius: 3px;
+  color: var(--paddock-white);
+  font-size: 9px;
+  letter-spacing: -0.03em;
+}
+.paddock-console-mark i {
+  width: 3px;
+  height: 10px;
+  transform: skew(-18deg);
+  background: var(--paddock-red);
+}
+.paddock-access .auth-card h1 {
+  font-size: clamp(34px, 3.6vw, 48px);
+  font-weight: 560;
+  letter-spacing: -0.055em;
+  line-height: 1.08;
+}
+.paddock-access .auth-description {
+  margin: 13px 0 37px;
+  color: #c5cdd4;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.paddock-access .auth-form fieldset {
+  min-width: 0;
+}
+.paddock-access .auth-field {
+  margin-bottom: 22px;
+}
+.paddock-access .auth-field label {
+  margin-bottom: 9px;
+  color: #e8ecec;
+  font-size: 12px;
+  font-weight: 620;
+  letter-spacing: 0.03em;
+}
+.paddock-access .auth-field input,
+.paddock-access .auth-field select {
+  min-height: 54px;
+  padding: 13px 16px;
+  border: 1px solid #6b7782;
+  border-radius: 6px;
+  background: #0e1216;
+  color: var(--paddock-white);
+  font-size: 16px;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+.paddock-access .auth-field input:hover,
+.paddock-access .auth-field select:hover {
+  border-color: #a1adb8;
+}
+.paddock-access .auth-field input:focus-visible,
+.paddock-access .auth-field select:focus-visible {
+  border-color: var(--paddock-red);
+  outline: 2px solid var(--paddock-red);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 5px #e5485222;
+}
+.paddock-access .auth-field input:-webkit-autofill {
+  -webkit-text-fill-color: var(--paddock-white);
+  box-shadow: inset 0 0 0 100px #20262c;
+  caret-color: var(--paddock-white);
+}
+.paddock-access .auth-password input {
+  padding-right: 81px;
+}
+.paddock-access .auth-password button {
+  top: 6px;
+  right: 6px;
+  min-width: 66px;
+  min-height: 42px;
+  color: #e2e9ee;
+  font-size: 12px;
+  font-weight: 650;
+}
+.paddock-access .auth-password button:hover {
+  background: #353e47;
+}
+.paddock-access .auth-password button:focus-visible,
+.paddock-access .auth-text-button:focus-visible,
+.paddock-access .auth-submit:focus-visible {
+  outline: 2px solid var(--paddock-red);
+  outline-offset: 3px;
+}
+.paddock-access .auth-submit.btn.ok {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 56px;
+  margin-top: 31px;
+  padding: 11px 14px 11px 19px;
+  border: 1px solid #f0767e;
+  border-radius: 6px;
+  background: linear-gradient(100deg, #b72f39, #d53d47 68%, #e54852);
+  color: white;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.015em;
+  box-shadow:
+    0 12px 26px #a11e2c30,
+    inset 0 1px 0 #ffffff37;
+  transition:
+    background 180ms ease,
+    transform 180ms ease,
+    box-shadow 180ms ease;
+}
+.paddock-access .auth-submit.btn.ok:hover:not(:disabled) {
+  transform: translateY(-2px);
+  background: linear-gradient(100deg, #c63742, #e54852);
+  box-shadow:
+    0 17px 30px #a11e2c4a,
+    inset 0 1px 0 #ffffff37;
+}
+.paddock-access .auth-submit.btn.ok:active:not(:disabled) {
+  transform: translateY(0);
+}
+.paddock-access .auth-submit:disabled {
+  cursor: progress;
+  opacity: 0.86;
+}
+.auth-submit-arrow {
+  display: grid;
+  place-items: center;
+  width: 29px;
+  height: 29px;
+  border: 1px solid #ffffff80;
+  border-radius: 3px;
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 1;
+}
+.paddock-access .auth-progress {
+  margin-top: 12px;
+  color: #d9e0e5;
+  font-size: 12px;
+}
+.paddock-access .auth-progress-track {
+  display: block;
+  height: 2px;
+  margin-bottom: 9px;
+  overflow: hidden;
+  background: #48515b;
+}
+.paddock-access .auth-progress-track::after {
+  display: block;
+  width: 35%;
+  height: 100%;
+  content: "";
+  background: var(--paddock-red);
+  animation: paddock-progress 1.1s ease-in-out infinite alternate;
+}
+@keyframes paddock-progress {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(185%);
+  }
+}
+.paddock-access .auth-text-button {
+  margin: 10px 0 0 auto;
+  padding: 8px 0;
+  color: #e4e9ec;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: right;
+}
+.paddock-access .auth-text-button:hover {
+  color: white;
+  text-decoration-color: var(--paddock-red);
+  text-underline-offset: 4px;
+}
+.paddock-access .auth-form-note {
+  margin: 30px 0 0;
+  padding-top: 19px;
+  border-top: 1px solid #75808b4d;
+  color: #c0c9d1;
+  font-size: 12px;
+  text-align: left;
+}
+.paddock-access .auth-notice,
+.paddock-access .auth-error {
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.paddock-access .auth-notice {
+  border-color: #708278;
+  background: #1c2924;
+  color: #d9e9df;
+}
+.paddock-access .auth-error {
+  border-color: #e54852;
+  background: #4b2026;
+  color: #fff1f1;
+}
+.paddock-access .auth-step {
+  color: var(--paddock-white);
+  font-weight: 580;
+}
+.paddock-access .auth-caption {
+  color: #c0c9d1;
+}
+.paddock-access .auth-footer {
+  position: absolute;
+  right: clamp(32px, 4vw, 66px);
+  bottom: 30px;
+  grid-column: auto;
+  color: #b6c0c9;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-align: right;
+}
+@media (max-width: 1100px) {
+  .paddock-access {
+    grid-template-columns: minmax(0, 1fr) minmax(410px, 1fr);
+  }
+  .paddock-access .auth-intro {
+    padding-left: clamp(28px, 4vw, 48px);
+    padding-right: clamp(28px, 4vw, 48px);
+  }
+  .paddock-access .auth-statement {
+    font-size: clamp(44px, 5.5vw, 70px);
+  }
+  .paddock-access .auth-card.glass.lq {
+    width: calc(100% - 44px);
+    padding: 34px;
+  }
+}
+@media (max-width: 760px) {
+  .paddock-access {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    padding: 0 0 env(safe-area-inset-bottom);
+    background: linear-gradient(155deg, #1b2026, #0b0d10 65%);
+  }
+  .paddock-access::before {
+    display: none;
+  }
+  .paddock-access .auth-intro {
+    min-height: 196px;
+    padding: 26px 28px 32px;
+    border-right: 0;
+    border-bottom: 1px solid #6c78833d;
+  }
+  .paddock-access .auth-intro-copy {
+    margin-top: 36px;
+    padding: 0;
+  }
+  .paddock-access .auth-eyebrow {
+    margin-bottom: 12px;
+    font-size: 9px;
+  }
+  .paddock-access .auth-statement {
+    font-size: clamp(31px, 6.5vw, 48px);
+  }
+  .paddock-access .auth-intro .auth-caption,
+  .paddock-access .auth-assurance {
+    display: none;
+  }
+  .paddock-architecture {
+    opacity: 0.43;
+  }
+  .paddock-access .auth-card.glass.lq {
+    width: min(100% - 40px, 500px);
+    max-height: none;
+    margin: 24px auto 52px;
+    padding: clamp(25px, 5.5vw, 38px);
+  }
+  .paddock-console-top {
+    margin-bottom: 36px;
+  }
+  .paddock-access .auth-footer {
+    position: static;
+    margin: auto 0 0;
+    padding: 0 20px 22px;
+    text-align: center;
+  }
+}
+@media (max-width: 480px) {
+  .paddock-access .auth-intro {
+    min-height: 162px;
+    padding: 21px 21px 25px;
+  }
+  .paddock-access .auth-brand {
+    font-size: 17px;
+  }
+  .paddock-access .auth-brand svg {
+    width: 30px;
+    height: 30px;
+  }
+  .paddock-access .auth-intro-copy {
+    margin-top: 29px;
+  }
+  .paddock-access .auth-statement {
+    font-size: clamp(30px, 8.8vw, 41px);
+  }
+  .paddock-access .auth-card.glass.lq {
+    width: calc(100% - 24px);
+    margin: 12px auto 38px;
+    padding: 27px 24px;
+  }
+  .paddock-access .auth-card h1 {
+    font-size: 35px;
+  }
+  .paddock-access .auth-description {
+    margin-bottom: 28px;
+  }
+}
+@media (max-width: 350px) {
+  .paddock-access .auth-card.glass.lq {
+    padding: 24px 17px;
+  }
+  .paddock-console-top > span:last-child {
+    display: none;
+  }
+  .paddock-access .auth-eyebrow {
+    letter-spacing: 0.11em;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .paddock-access .auth-submit.btn.ok,
+  .paddock-access .auth-field input,
+  .paddock-access .auth-field select {
+    transition: none;
+  }
+  .paddock-access .auth-progress-track::after {
+    width: 100%;
+    animation: none;
+  }
+}
+@media (prefers-contrast: more) {
+  .paddock-access .auth-card.glass.lq,
+  .paddock-access .auth-field input,
+  .paddock-access .auth-field select {
+    border-color: #dce3e9;
+  }
+  .paddock-access .auth-card {
+    background: var(--paddock-black);
+  }
+}
