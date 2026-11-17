@@ -6,7 +6,7 @@ export default async function CommunicationsPage() {
   await requireSession();
   return (
     <main id="app" tabIndex={-1}>
-      <PageHeading title="Communications">
+      <PageHeading eyebrow="CREW COMMUNICATIONS" title="Communications">
         What customers read, and whether it arrived.
       </PageHeading>
       <Communications connected={Boolean(process.env.OPERATIONS_API_ORIGIN)} />

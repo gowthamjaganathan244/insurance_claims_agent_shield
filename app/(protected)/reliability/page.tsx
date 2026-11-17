@@ -6,7 +6,7 @@ export default async function ReliabilityPage() {
   await requireSession();
   return (
     <main id="app" tabIndex={-1}>
-      <PageHeading title="Reliability">
+      <PageHeading eyebrow="TELEMETRY / SERVICE HEALTH" title="Reliability">
         CloudWatch alarms and API and Lambda measurements for the claims
         service. Missing data is never treated as healthy.
       </PageHeading>

@@ -66,7 +66,7 @@ export function CommandClaims({
       <section className="hero overview-head">
         <PageHeading
           eyebrow="01 / PIT WALL"
-          title="Claims in focus."
+          title="Overview"
           actions={
             <>
               <button

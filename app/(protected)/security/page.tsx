@@ -6,7 +6,7 @@ export default async function SecurityPage() {
   await requireSession();
   return (
     <main id="app" tabIndex={-1}>
-      <PageHeading title="Security">
+      <PageHeading eyebrow="SECURITY / DOCUMENT INSPECTION" title="Security">
         GuardDuty malware scan results, document status and quarantine evidence
         for your claims.
       </PageHeading>
