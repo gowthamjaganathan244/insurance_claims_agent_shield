@@ -67,13 +67,45 @@ export function LiveClaimDetail({
       />
       {data && (
         <div className="claim-journey" aria-label="Recorded claim journey">
-          <div className="journey-heading"><span>CLAIM JOURNEY</span><span>RECORDED EVENTS</span></div>
+          <div className="journey-heading">
+            <span>CLAIM JOURNEY</span>
+            <span>RECORDED EVENTS</span>
+          </div>
           <ol>
-            <li><span className="journey-marker" aria-hidden="true" /><div><strong>Claim submitted</strong><small><ClaimTime value={data.createdAt} /></small></div></li>
-            {data.cancelledAt && <li><span className="journey-marker cancelled" aria-hidden="true" /><div><strong>Claim cancelled</strong><small><ClaimTime value={data.cancelledAt} /></small></div></li>}
-            {!data.cancelledAt && <li><span className="journey-marker current" aria-hidden="true" /><div><strong>Current status</strong><small>{data.status}</small></div></li>}
+            <li>
+              <span className="journey-marker" aria-hidden="true" />
+              <div>
+                <strong>Claim created</strong>
+                <small>
+                  <ClaimTime value={data.createdAt} />
+                </small>
+              </div>
+            </li>
+            {data.cancelledAt && (
+              <li>
+                <span className="journey-marker cancelled" aria-hidden="true" />
+                <div>
+                  <strong>Claim cancelled</strong>
+                  <small>
+                    <ClaimTime value={data.cancelledAt} />
+                  </small>
+                </div>
+              </li>
+            )}
+            {!data.cancelledAt && (
+              <li>
+                <span className="journey-marker current" aria-hidden="true" />
+                <div>
+                  <strong>Current status</strong>
+                  <small>{data.status}</small>
+                </div>
+              </li>
+            )}
           </ol>
-          <p>Assessment and decision history, when available, can be found under Activity.</p>
+          <p>
+            Assessment and decision history, when available, can be found under
+            Activity.
+          </p>
         </div>
       )}
       {data && (

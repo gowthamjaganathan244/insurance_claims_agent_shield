@@ -127,3 +127,39 @@ test("claims table: filters derive from returned statuses, search, and accessibl
     ),
   ).toBe(true);
 });
+
+test("claims sorting changes the order of the loaded page", async ({
+  page,
+}) => {
+  await login(page.request);
+  await page.route("**/api/claims", (route) =>
+    route.fulfill({
+      json: {
+        claims: [
+          {
+            claimId: "first",
+            policyNumber: "POL-A",
+            claimType: "Motor",
+            status: "SUBMITTED",
+            createdAt: "2025-01-01T00:00:00Z",
+          },
+          {
+            claimId: "second",
+            policyNumber: "POL-B",
+            claimType: "Home",
+            status: "CANCELLED",
+            createdAt: "2025-02-01T00:00:00Z",
+          },
+        ],
+        nextToken: null,
+      },
+    }),
+  );
+  await page.goto("/claims");
+  const rows = page.locator(".claim-row");
+  await expect(rows.first()).toContainText("POL-B");
+  await page.getByLabel("Sort by").selectOption("oldest");
+  await expect(rows.first()).toContainText("POL-A");
+  await page.getByLabel("Sort by").selectOption("type");
+  await expect(rows.first()).toContainText("POL-B");
+});

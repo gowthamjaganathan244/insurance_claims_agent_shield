@@ -12,6 +12,7 @@ export function ClaimsWorkspace() {
   const [cursor, setCursor] = useState<string | null>(null);
   const [filter, setFilter] = useState("All");
   const [query, setQuery] = useState("");
+  const [sort, setSort] = useState("newest");
   const { data, error, loading, updated, refresh } =
     useLiveClaims<ClaimsPageData>(
       `/api/claims${cursor ? `?nextToken=${encodeURIComponent(cursor)}` : ""}`,
@@ -21,14 +22,30 @@ export function ClaimsWorkspace() {
   const statuses = [...new Set(claims.map((claim) => claim.status))].sort();
   const status = filter === "All" || statuses.includes(filter) ? filter : "All";
   const needle = query.trim().toLowerCase();
-  const visible = claims.filter(
-    (claim) =>
-      (status === "All" || claim.status === status) &&
-      (!needle ||
-        claim.claimId.toLowerCase().includes(needle) ||
-        claim.policyNumber.toLowerCase().includes(needle) ||
-        claim.claimType.toLowerCase().includes(needle)),
-  );
+  const visible = claims
+    .filter(
+      (claim) =>
+        (status === "All" || claim.status === status) &&
+        (!needle ||
+          claim.claimId.toLowerCase().includes(needle) ||
+          claim.policyNumber.toLowerCase().includes(needle) ||
+          claim.claimType.toLowerCase().includes(needle)),
+    )
+    .sort((a, b) => {
+      if (sort === "oldest")
+        return Date.parse(a.createdAt) - Date.parse(b.createdAt);
+      if (sort === "status")
+        return (
+          a.status.localeCompare(b.status) ||
+          Date.parse(b.createdAt) - Date.parse(a.createdAt)
+        );
+      if (sort === "type")
+        return (
+          a.claimType.localeCompare(b.claimType) ||
+          Date.parse(b.createdAt) - Date.parse(a.createdAt)
+        );
+      return Date.parse(b.createdAt) - Date.parse(a.createdAt);
+    });
   return (
     <>
       <PageHeading
@@ -47,7 +64,7 @@ export function ClaimsWorkspace() {
           </>
         }
       >
-        Your claims, newest first. Open a claim for documents, assessment,
+        Your claims in one place. Open a claim for documents, assessment,
         approvals, payments and activity.
       </PageHeading>
       <div className="claims-toolbar">
@@ -76,6 +93,18 @@ export function ClaimsWorkspace() {
             onChange={(event) => setQuery(event.target.value)}
           />
         </label>
+        <label className="sort-control">
+          <span>Sort by</span>
+          <select
+            value={sort}
+            onChange={(event) => setSort(event.target.value)}
+          >
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+            <option value="status">Status</option>
+            <option value="type">Claim type</option>
+          </select>
+        </label>
       </div>
       <p className="dim sm" role="status">
         {loading
@@ -98,9 +127,7 @@ export function ClaimsWorkspace() {
       )}
       <div className="claims-table-wrap" aria-busy={loading}>
         <table className="tbl claims-table">
-          <caption className="sr-only">
-            Your claims on this page, newest first
-          </caption>
+          <caption className="sr-only">Your claims on this page</caption>
           <thead>
             <tr>
               <th scope="col">Claim</th>
