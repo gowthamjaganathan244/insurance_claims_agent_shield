@@ -1,42 +1,64 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import type { ClaimsPageData } from "@/lib/live-claims";
 import { useLiveClaims } from "./use-live-claims";
 import { ClaimDocuments } from "./claim-documents";
+import { ClaimTime } from "./live-claim-panel";
 export function SecurityDocuments() {
   const [cursor, setCursor] = useState<string | null>(null),
     [selected, setSelected] = useState("");
-  const { data, error, loading, refresh } = useLiveClaims<ClaimsPageData>(
-    `/api/claims${cursor ? `?nextToken=${encodeURIComponent(cursor)}` : ""}`,
-  );
-  const id = data?.claims.some((c) => c.claimId === selected)
-    ? selected
-    : data?.claims[0]?.claimId;
+  const { data, error, loading, updated, refresh } =
+    useLiveClaims<ClaimsPageData>(
+      `/api/claims${cursor ? `?nextToken=${encodeURIComponent(cursor)}` : ""}`,
+    );
+  const claim =
+    data?.claims.find((c) => c.claimId === selected) ?? data?.claims[0];
+  const id = claim?.claimId;
   return (
-    <section className="sec">
-      <h2>Security by claim</h2>
-      <p className="dim">
-        Choose one of your authorised claims. Document metadata comes from the
-        security read endpoint; no incidents or threat names are inferred.
-      </p>
+    <section
+      className="sec inspection-workspace"
+      aria-labelledby="inspection-selector-title"
+    >
+      <div className="inspection-section-head">
+        <span>01 / INSPECTION SELECTOR</span>
+        <h2 id="inspection-selector-title">Choose a claim</h2>
+        <p>
+          Only your authorised claims appear here. Select one to inspect its
+          recorded document evidence.
+        </p>
+      </div>
       {loading && <p role="status">Loading authorised claims…</p>}
       {error && <p role="alert">{error}</p>}
-      <label htmlFor="security-claim">Claim</label>
-      <select
-        className="claim-selector"
-        id="security-claim"
-        value={id ?? ""}
-        onChange={(e) => setSelected(e.target.value)}
-      >
-        <option value="" disabled>
-          Select a claim
-        </option>
-        {data?.claims.map((c) => (
-          <option key={c.claimId} value={c.claimId}>
-            {c.policyNumber} · {c.claimId}
+      <div className="inspection-selector">
+        <div>
+          <label htmlFor="security-claim">Claim reference</label>
+          <p className="dim sm">
+            {updated ? (
+              <>
+                Last successful claim read: <ClaimTime value={updated} />
+              </>
+            ) : (
+              "Claim list not yet available"
+            )}
+          </p>
+        </div>
+        <select
+          className="claim-selector"
+          id="security-claim"
+          value={id ?? ""}
+          onChange={(e) => setSelected(e.target.value)}
+        >
+          <option value="" disabled>
+            Select a claim
           </option>
-        ))}
-      </select>
+          {data?.claims.map((c) => (
+            <option key={c.claimId} value={c.claimId}>
+              {c.policyNumber} · {c.claimType}
+            </option>
+          ))}
+        </select>
+      </div>
       <div className="acts">
         <button
           className="btn"
@@ -59,7 +81,25 @@ export function SecurityDocuments() {
       {data && !data.claims.length && (
         <p>No authorised claims returned on this page.</p>
       )}
-      {id && <ClaimDocuments key={id} claimId={id} />}
+      {claim && (
+        <div className="inspection-identity">
+          <div>
+            <small>SELECTED CLAIM</small>
+            <strong>{claim.policyNumber}</strong>
+            <span>
+              {claim.claimType} · {claim.status}
+            </span>
+          </div>
+          <Link
+            href={`/claim/${encodeURIComponent(claim.claimId)}`}
+            prefetch={false}
+          >
+            Open claim ↗
+          </Link>
+          <code>{claim.claimId}</code>
+        </div>
+      )}
+      {id && <ClaimDocuments key={id} claimId={id} inspection />}
     </section>
   );
 }

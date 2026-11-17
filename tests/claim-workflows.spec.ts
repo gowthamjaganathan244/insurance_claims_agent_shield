@@ -61,6 +61,12 @@ test("document service missing or invalid never falls back to sample incidents",
     await expect(page.locator("main").getByRole("alert")).toContainText(
       /not available|not connected/,
     );
+    await expect(
+      page.getByRole("heading", { name: "Inspection data unavailable" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Retry inspection" }),
+    ).toBeVisible();
     await expect(page.locator("main")).not.toContainText(
       /INC-2291|CLM-48213|NO_THREATS_FOUND/,
     );

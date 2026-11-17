@@ -22,9 +22,11 @@ type DocumentRecord = {
 export function ClaimDocuments({
   claimId,
   canUpload = false,
+  inspection = false,
 }: {
   claimId: string;
   canUpload?: boolean;
+  inspection?: boolean;
 }) {
   const [cursor, setCursor] = useState<string | null>(null);
   const { data, error, loading, updated, refresh } = useLiveClaims<{
@@ -36,8 +38,15 @@ export function ClaimDocuments({
   const [pending, setPending] = useState(false),
     [message, setMessage] = useState("");
   return (
-    <section className="sec">
-      <h2>Document security evidence</h2>
+    <section className={`sec ${inspection ? "inspection-documents" : ""}`}>
+      {inspection && (
+        <p className="inspection-index">02 / INSPECTION WORKBENCH</p>
+      )}
+      <h2>
+        {inspection
+          ? "Recorded document inspection"
+          : "Document security evidence"}
+      </h2>
       {canUpload && (
         <form
           className="record-form"
@@ -146,7 +155,35 @@ export function ClaimDocuments({
         )}
       </div>
       {loading && <p role="status">Loading document evidence…</p>}
-      {error && <p role="alert">{error}</p>}
+      {error &&
+        (inspection ? (
+          <div className="inspection-diagnostic" role="alert">
+            <span className="inspection-diagnostic-icon" aria-hidden="true">
+              !
+            </span>
+            <div>
+              <h3>Inspection data unavailable</h3>
+              <p>
+                The document service did not return records for this claim. Scan
+                findings and quarantine evidence cannot be checked here right
+                now.
+              </p>
+              <details>
+                <summary>Technical details</summary>
+                <p>{error}</p>
+              </details>
+              <button
+                className="btn"
+                disabled={loading}
+                onClick={() => void refresh()}
+              >
+                Retry inspection
+              </button>
+            </div>
+          </div>
+        ) : (
+          <p role="alert">{error}</p>
+        ))}
       {updated && (
         <p className="dim">
           Last successful read: <ClaimTime value={updated} />
@@ -155,12 +192,68 @@ export function ClaimDocuments({
       {data && !data.documents.length && (
         <p>No document records returned on this page.</p>
       )}
+      {inspection && data && (
+        <p className="inspection-count">
+          {data.documents.length} document record
+          {data.documents.length === 1 ? "" : "s"} returned on this page.
+          Additional pages are available only when the service provides a next
+          token.
+        </p>
+      )}
       {data?.documents.map((doc) => (
-        <details className="inc" key={doc.documentId}>
+        <details
+          className={`inc ${inspection ? "inspection-record" : ""}`}
+          key={doc.documentId}
+        >
           <summary>
-            {doc.fileName ?? doc.documentId} · {doc.status}
+            <span>
+              {doc.fileName ?? doc.documentId}
+              <small>{doc.status}</small>
+            </span>
+            <span
+              className={`inspection-scan ${doc.scanStatus === "NO_THREATS_FOUND" ? "ok" : doc.scanStatus === "THREATS_FOUND" ? "bad" : doc.scanStatus === "PENDING" ? "mut" : "warn"}`}
+            >
+              {doc.scanStatus}
+            </span>
           </summary>
           <div className="pane">
+            {inspection && (
+              <div
+                className="inspection-rail"
+                aria-label="Recorded document checkpoints"
+              >
+                <div>
+                  <span>RECEIVED</span>
+                  <strong>
+                    {doc.createdAt ? "Recorded" : "Time unavailable"}
+                  </strong>
+                </div>
+                <div>
+                  <span>SCAN RESULT</span>
+                  <strong>{doc.scanStatus}</strong>
+                </div>
+                <div>
+                  <span>QUARANTINE COPY</span>
+                  <strong>
+                    {doc.quarantineCopyVerified === true
+                      ? "Verified"
+                      : doc.quarantineCopiedAt
+                        ? "Copy recorded"
+                        : "Not recorded"}
+                  </strong>
+                </div>
+                <div>
+                  <span>SOURCE ISOLATION</span>
+                  <strong>
+                    {doc.sourceIsolatedAt
+                      ? "Recorded"
+                      : doc.sourceIsolationPending
+                        ? "Pending"
+                        : "Not recorded"}
+                  </strong>
+                </div>
+              </div>
+            )}
             <dl className="kv">
               <dt>File name</dt>
               <dd>{doc.fileName ?? "Not recorded"}</dd>

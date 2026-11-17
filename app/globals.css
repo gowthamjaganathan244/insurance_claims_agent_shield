@@ -4424,3 +4424,225 @@ h2 {
     grid-column: 1 / -1;
   }
 }
+
+/* Scrutineering Bay: document states stay literal and unknown evidence stays neutral. */
+.inspection-workspace {
+  --inspection-edge: #3c4650;
+}
+.inspection-section-head {
+  border-bottom: 1px solid var(--inspection-edge);
+  padding-bottom: 18px;
+}
+.inspection-section-head > span,
+.inspection-index {
+  color: #e58b94;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+}
+.inspection-section-head h2 {
+  margin-top: 10px;
+  font-weight: 650;
+}
+.inspection-section-head p {
+  max-width: 60ch;
+  color: var(--mut);
+  font-size: 13px;
+}
+.inspection-selector {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-top: 20px;
+  padding: 19px 22px;
+  border: 1px solid var(--inspection-edge);
+  border-radius: 9px;
+  background: linear-gradient(120deg, #20262c, #15191e);
+}
+.inspection-selector label {
+  font-weight: 650;
+}
+.inspection-selector .sm {
+  margin: 5px 0 0;
+}
+.inspection-selector select {
+  width: min(480px, 100%);
+  margin: 0;
+}
+.inspection-identity {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+  margin-top: 20px;
+  padding: 14px 20px;
+  border-left: 3px solid #e54852;
+  background: #1b2026;
+}
+.inspection-identity div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 13px;
+}
+.inspection-identity small {
+  color: var(--mut);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+.inspection-identity strong {
+  font-size: 18px;
+}
+.inspection-identity span,
+.inspection-identity code {
+  color: var(--mut);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.inspection-identity a {
+  margin-left: auto;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  font-size: 13px;
+}
+.inspection-identity code {
+  flex-basis: 100%;
+}
+.inspection-documents {
+  margin-top: 38px;
+}
+.inspection-documents h2 {
+  margin: 8px 0 20px;
+  font-weight: 650;
+}
+.inspection-documents .acts {
+  margin: 18px 0;
+}
+.inspection-count {
+  color: var(--mut);
+  font-size: 12px;
+}
+.inspection-diagnostic {
+  display: flex;
+  gap: 17px;
+  margin: 20px 0;
+  padding: 24px;
+  border: 1px solid #7b6646;
+  border-radius: 9px;
+  background: linear-gradient(135deg, #29251e, #181b1e);
+}
+.inspection-diagnostic-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex: none;
+  border: 1px solid #ffbd66;
+  border-radius: 50%;
+  color: #ffbd66;
+  font-weight: 700;
+}
+.inspection-diagnostic h3 {
+  color: #fff2d8;
+}
+.inspection-diagnostic p {
+  max-width: 65ch;
+  color: #d6cbb9;
+  font-size: 13px;
+}
+.inspection-diagnostic details {
+  margin-bottom: 15px;
+  color: #ffdcaa;
+  font-size: 12px;
+}
+.inspection-diagnostic details p {
+  overflow-wrap: anywhere;
+}
+.inspection-record {
+  margin: 10px 0;
+  border: 1px solid #414b54;
+  border-radius: 8px;
+  background: #181d22;
+}
+.inspection-record summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px;
+}
+.inspection-record summary span:first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-weight: 650;
+}
+.inspection-record summary small {
+  display: block;
+  color: var(--mut);
+  font-size: 11px;
+  font-weight: 400;
+}
+.inspection-scan {
+  padding: 4px 8px;
+  border: 1px solid #525b63;
+  border-radius: 4px;
+  color: var(--mut);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.inspection-scan.ok {
+  border-color: #66d6a077;
+  color: #66d6a0;
+}
+.inspection-scan.bad {
+  border-color: #e5485277;
+  color: #ff8990;
+}
+.inspection-scan.warn {
+  border-color: #ffbd6677;
+  color: #ffbd66;
+}
+.inspection-rail {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  margin-bottom: 16px;
+  border: 1px solid #424b54;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #424b54;
+}
+.inspection-rail div {
+  min-width: 0;
+  padding: 13px;
+  background: #21282f;
+}
+.inspection-rail span,
+.inspection-rail strong {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.inspection-rail span {
+  color: var(--mut);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+.inspection-rail strong {
+  margin-top: 7px;
+  font-size: 12px;
+}
+@media (max-width: 760px) {
+  .inspection-selector {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .inspection-identity a {
+    margin-left: 0;
+  }
+  .inspection-rail {
+    grid-template-columns: 1fr 1fr;
+  }
+}
