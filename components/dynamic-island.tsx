@@ -14,7 +14,10 @@ const links = [
 export function DynamicIsland({ displayName }: { displayName: string }) {
   const pathname = usePathname();
   return (
-    <Island key={pathname} pathname={pathname} displayName={displayName} />
+    <>
+      <Island key={pathname} pathname={pathname} displayName={displayName} />
+      <CommandPalette />
+    </>
   );
 }
 function Island({
@@ -151,7 +154,6 @@ function Island({
           <MonitoringHealth />
         </div>
       </div>
-      <CommandPalette />
     </header>
   );
 }

@@ -34,6 +34,22 @@ test("all views render without errors or horizontal overflow", async ({
   }
   expect(errors).toEqual([]);
 });
+test("tablet command control does not cover navigation", async ({ page }) => {
+  await page.setViewportSize({ width: 820, height: 1180 });
+  await page.goto("/");
+  const deck = await page.locator(".isl").boundingBox();
+  const search = await page
+    .getByRole("button", { name: "Search and navigate" })
+    .boundingBox();
+  expect(
+    deck &&
+      search &&
+      (search.x + search.width <= deck.x ||
+        search.x >= deck.x + deck.width ||
+        search.y + search.height <= deck.y ||
+        search.y >= deck.y + deck.height),
+  ).toBe(true);
+});
 test("live claims support description updates and confirmed cancellation", async ({
   page,
 }) => {
