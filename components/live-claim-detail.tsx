@@ -103,8 +103,11 @@ export function LiveClaimDetail({
             )}
           </ol>
           <p>
-            Assessment and decision history, when available, can be found under
-            Activity.
+            {data.status === "SUBMITTED"
+              ? "Your claim is recorded. You can update its description and add evidence while it remains submitted."
+              : data.status === "CANCELLED"
+                ? "This claim was cancelled and can no longer be edited."
+                : `The claim service reports ${data.status}. Check Activity for any available assessment and decision history.`}
           </p>
         </div>
       )}

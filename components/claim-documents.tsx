@@ -6,9 +6,13 @@ type DocumentRecord = {
   documentId: string;
   claimId: string;
   fileName?: string;
+  contentType?: string;
+  expectedSizeBytes?: number;
+  actualSizeBytes?: number;
   status: string;
   scanStatus: string;
   createdAt?: string;
+  verifiedAt?: string;
   scanCompletedAt?: string;
   quarantineCopiedAt?: string;
   sourceIsolatedAt?: string;
@@ -158,8 +162,18 @@ export function ClaimDocuments({
           </summary>
           <div className="pane">
             <dl className="kv">
+              <dt>File name</dt>
+              <dd>{doc.fileName ?? "Not recorded"}</dd>
               <dt>Document</dt>
               <dd>{doc.documentId}</dd>
+              <dt>File type</dt>
+              <dd>{doc.contentType ?? "Not recorded"}</dd>
+              <dt>Recorded size</dt>
+              <dd>
+                {typeof doc.actualSizeBytes === "number"
+                  ? `${doc.actualSizeBytes.toLocaleString("en-AU")} bytes`
+                  : "Not recorded"}
+              </dd>
               <dt>Scan result</dt>
               <dd>{doc.scanStatus}</dd>
               <dt>Workflow status</dt>
@@ -177,6 +191,16 @@ export function ClaimDocuments({
                   : String(doc.sourceIsolationPending)}
               </dd>
             </dl>
+            {doc.createdAt && (
+              <p>
+                Uploaded: <ClaimTime value={doc.createdAt} />
+              </p>
+            )}
+            {doc.verifiedAt && (
+              <p>
+                Upload verified: <ClaimTime value={doc.verifiedAt} />
+              </p>
+            )}
             {doc.scanCompletedAt && (
               <p>
                 Scan recorded: <ClaimTime value={doc.scanCompletedAt} />
