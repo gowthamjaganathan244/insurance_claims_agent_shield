@@ -7,6 +7,7 @@ export function useLiveClaims<T>(
 ) {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState("");
+  const [errorStatus, setErrorStatus] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [updated, setUpdated] = useState<string | null>(null);
   const active = useRef<AbortController | null>(null);
@@ -16,6 +17,7 @@ export function useLiveClaims<T>(
     const controller = new AbortController();
     active.current = controller;
     setLoading(true);
+    setErrorStatus(null);
     try {
       let result: T;
       if (loader) result = await loader(url, controller.signal);
@@ -29,6 +31,7 @@ export function useLiveClaims<T>(
         });
         const body = await response.json();
         if (!response.ok) {
+          setErrorStatus(response.status);
           if (response.status === 401) window.location.replace("/login");
           throw new Error(body.error ?? "Unable to load claims.");
         }
@@ -37,6 +40,7 @@ export function useLiveClaims<T>(
       if (!controller.signal.aborted) {
         setData(result);
         setError("");
+        setErrorStatus(null);
         setUpdated(new Date().toISOString());
         failures.current = 0;
       }
@@ -94,5 +98,5 @@ export function useLiveClaims<T>(
       window.removeEventListener("agentshield:claims-changed", changed);
     };
   }, [refresh, interval]);
-  return { data, error, loading, updated, refresh };
+  return { data, error, errorStatus, loading, updated, refresh };
 }

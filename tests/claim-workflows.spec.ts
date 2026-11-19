@@ -118,6 +118,32 @@ test("inspection distinguishes clean, threat and unknown document states", async
   await expect(
     page.locator(".inspection-record").nth(2).locator(".inspection-scan"),
   ).toHaveClass(/mut/);
+  await page.locator(".inspection-record").nth(0).locator("summary").click();
+  await expect(page.locator(".inspection-record").nth(0)).toContainText(
+    "Inspection completed: recorded scan result",
+  );
+  await page.locator(".inspection-record").nth(2).locator("summary").click();
+  await expect(page.locator(".inspection-record").nth(2)).toContainText(
+    "Security result unavailable: scan pending or not recorded",
+  );
+});
+test("inspection separates empty results and denied access", async ({
+  page,
+}) => {
+  await login(page.request);
+  await page.goto("/security");
+  await expect(page.getByText("No documents for this claim.")).toBeVisible();
+  await page.route(`**${path}`, (route) =>
+    route.fulfill({
+      status: 403,
+      json: { error: "Access to the document service was denied." },
+    }),
+  );
+  await page.getByRole("button", { name: "Refresh documents" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Access denied" }),
+  ).toBeVisible();
+  await expect(page.getByText("No documents for this claim.")).toHaveCount(0);
 });
 test("signed upload completes and shows recorded pending scan, never clean or isolated", async ({
   page,
@@ -144,7 +170,7 @@ test("signed upload completes and shows recorded pending scan, never clean or is
   await expect(page.locator("main")).toContainText(
     "Upload verified. Recorded status: PENDING_SCAN; scan: PENDING",
   );
-  await page.getByText("evidence.pdf · PENDING_SCAN", { exact: true }).click();
+  await page.locator("summary").filter({ hasText: "evidence.pdf" }).click();
   await expect(page.locator("main")).toContainText("PENDING");
   await expect(page.locator("main")).not.toContainText("NO_THREATS_FOUND");
 });

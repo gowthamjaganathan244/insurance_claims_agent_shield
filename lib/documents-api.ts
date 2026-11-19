@@ -59,15 +59,26 @@ export async function documentsApi(
   if (!response.ok)
     throw new AuthError(
       response.status === 404
-        ? "Document service not available for this claim. The read endpoint may not be deployed yet."
-        : "Document request was rejected or could not be verified.",
+        ? "Document service not available for this claim. The claim may no longer be accessible or the read endpoint may not be deployed."
+        : response.status === 403
+          ? "Access to the document service was denied."
+          : response.status === 401
+            ? "Your document session was rejected. Sign in again."
+            : "Document service unavailable or the request could not be verified.",
       [400, 401, 403, 404, 409, 415, 429].includes(response.status)
         ? response.status
         : 502,
     );
-  const data = await response.json();
+  let data;
+  try {
+    data = await response.json();
+  } catch {
+    throw new AuthError("Document service returned an invalid response.", 502);
+  }
   if (operation === "list") {
     if (
+      !data ||
+      typeof data !== "object" ||
       !Array.isArray(data.documents) ||
       !(data.nextToken === null || typeof data.nextToken === "string")
     )

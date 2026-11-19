@@ -31,6 +31,19 @@ const scanTone = (doc: DocumentRecord) => {
   if (doc.scanStatus === "SKIPPED") return "warn";
   return "mut";
 };
+const scanExplanation = (doc: DocumentRecord) => {
+  if (
+    doc.scanStatus === "NO_THREATS_FOUND" ||
+    doc.scanStatus === "THREATS_FOUND"
+  )
+    return "Inspection completed: recorded scan result";
+  if (doc.scanStatus === "SKIPPED") return "Scan not performed";
+  if (doc.scanStatus === "PENDING")
+    return "Security result unavailable: scan pending or not recorded";
+  if (doc.scanStatus === "FAILED")
+    return "Security result unavailable: scan failed";
+  return "Security result unavailable";
+};
 export function ClaimDocuments({
   claimId,
   canUpload = false,
@@ -41,12 +54,13 @@ export function ClaimDocuments({
   inspection?: boolean;
 }) {
   const [cursor, setCursor] = useState<string | null>(null);
-  const { data, error, loading, updated, refresh } = useLiveClaims<{
-    documents: DocumentRecord[];
-    nextToken: string | null;
-  }>(
-    `/api/claims/${claimId}/documents${cursor ? `?nextToken=${encodeURIComponent(cursor)}` : ""}`,
-  );
+  const { data, error, errorStatus, loading, updated, refresh } =
+    useLiveClaims<{
+      documents: DocumentRecord[];
+      nextToken: string | null;
+    }>(
+      `/api/claims/${claimId}/documents${cursor ? `?nextToken=${encodeURIComponent(cursor)}` : ""}`,
+    );
   const [pending, setPending] = useState(false),
     [message, setMessage] = useState("");
   return (
@@ -174,11 +188,17 @@ export function ClaimDocuments({
               !
             </span>
             <div>
-              <h3>Inspection data unavailable</h3>
+              <h3>
+                {errorStatus === 403
+                  ? "Access denied"
+                  : "Inspection data unavailable"}
+              </h3>
               <p>
-                The document service did not return records for this claim. Scan
-                findings and quarantine evidence cannot be checked here right
-                now.
+                {errorStatus === 403
+                  ? "Access to document evidence was denied."
+                  : "The document service could not provide evidence for this claim."}{" "}
+                Scan findings and quarantine evidence cannot be checked here
+                right now.
               </p>
               <details>
                 <summary>Technical details</summary>
@@ -202,7 +222,11 @@ export function ClaimDocuments({
         </p>
       )}
       {data && !data.documents.length && (
-        <p>No document records returned on this page.</p>
+        <p>
+          {!cursor && !data.nextToken
+            ? "No documents for this claim."
+            : "No document records returned on this page."}
+        </p>
       )}
       {inspection && data && (
         <p className="inspection-count">
@@ -240,7 +264,7 @@ export function ClaimDocuments({
                 </div>
                 <div>
                   <span>SCAN RESULT</span>
-                  <strong>{doc.scanStatus}</strong>
+                  <strong>{scanExplanation(doc)}</strong>
                 </div>
                 <div>
                   <span>QUARANTINE COPY</span>
